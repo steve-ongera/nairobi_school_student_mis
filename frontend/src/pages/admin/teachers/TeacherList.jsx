@@ -1,91 +1,85 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { getTeachers, deleteTeacher } from "../../../utils/api";
-import { useFetch } from "../../../hooks";
-import {
-  PageTitle, DataTable, SearchBar, AlertMessage, ConfirmDialog,
-} from "../../../components/common";
+// pages/admin/teachers/TeacherList.jsx
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { PageTitle } from "../../../components/common/PageTitle";
+import { DataTable, AlertMessage, LoadingSpinner, ConfirmDialog } from "../../../components/common/DataTable";
+import useFetch from "../../../hooks/useFetch";
+import { teachersAPI } from "../../../utils/api";
+import { formatDate } from "../../../utils/formatters";
 
-export function TeacherList() {
-  const [search, setSearch] = useState("");
-  const [deleteId, setDeleteId] = useState(null);
-  const [msg, setMsg] = useState({ type: "", text: "" });
-  const { data: teachers, loading, error, refetch } = useFetch(
-    () => getTeachers(search ? { search } : {}),
-    [search]
-  );
+export default function TeacherList() {
+  const navigate = useNavigate();
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const { data, loading, error, refetch } = useFetch(() => teachersAPI.getTeachers(), []);
+  const teachers = data?.results || data || [];
 
   const handleDelete = async () => {
     try {
-      await deleteTeacher(deleteId);
+      await teachersAPI.deleteTeacher(deleteTarget.id);
       setMsg({ type: "success", text: "Teacher deleted." });
       refetch();
-    } catch {
-      setMsg({ type: "danger", text: "Failed to delete teacher." });
-    }
+    } catch { setMsg({ type: "danger", text: "Failed to delete teacher." }); }
+    finally { setDeleteTarget(null); }
   };
 
   const columns = [
-    { header: "Staff No", render: (t) => <code>{t.staff_number || "—"}</code> },
-    { header: "Name", render: (t) =>
-      <Link to={`/admin/teachers/${t.id}`} className="fw-600">{t.full_name}</Link> },
-    { header: "Email", key: "email" },
-    { header: "TSC No", render: (t) => t.tsc_number || "—" },
-    { header: "Department", key: "department" },
-    { header: "Allocations", render: (t) =>
-      <span className="badge bg-primary">{t.allocation_count}</span> },
-    { header: "Status", render: (t) => (
-      <span className={`badge bg-${t.is_active ? "success" : "secondary"}`}>
-        {t.is_active ? "Active" : "Inactive"}
-      </span>
+    { key: "staff_number", label: "Staff No" },
+    { key: "full_name", label: "Name", render: (v, row) => (
+      <Link to={`/admin/teachers/${row.id}`} className="fw-semibold text-primary">{v}</Link>
     )},
-    { header: "Actions", render: (t) => (
-      <div className="d-flex gap-1">
-        <Link to={`/admin/teachers/${t.id}`} className="btn btn-sm btn-outline-primary">
-          <i className="bi bi-eye" />
-        </Link>
-        <Link to={`/admin/teachers/${t.id}/edit`} className="btn btn-sm btn-outline-secondary">
-          <i className="bi bi-pencil" />
-        </Link>
-        <button
-          className="btn btn-sm btn-outline-danger"
-          onClick={() => setDeleteId(t.id)}
-          data-bs-toggle="modal"
-          data-bs-target="#confirmDelete"
-        >
-          <i className="bi bi-trash" />
-        </button>
-      </div>
+    { key: "email", label: "Email", render: (v) => <small className="text-muted">{v}</small> },
+    { key: "tsc_number", label: "TSC No", render: (v) => v || "—" },
+    { key: "department", label: "Department", render: (v) => v || "—" },
+    { key: "allocation_count", label: "Allocations", render: (v) => (
+      <span className="badge bg-primary-light text-primary">{v}</span>
+    )},
+    { key: "is_active", label: "Status", render: (v) => (
+      <span className={`badge ${v ? "bg-success" : "bg-danger"}`}>{v ? "Active" : "Inactive"}</span>
     )},
   ];
 
   return (
-    <>
+    <section>
       <PageTitle title="Teachers" breadcrumbs={[{ label: "Teachers" }]} />
-      <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg({ type: "", text: "" })} />
-
+      {msg && <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg(null)} />}
       <div className="card">
         <div className="card-body">
-          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div className="d-flex justify-content-between align-items-center mb-4">
             <h5 className="card-title mb-0">All Teachers</h5>
             <div className="d-flex gap-2">
-              <SearchBar value={search} onChange={setSearch} placeholder="Search by name or email…" />
-              <Link to="/admin/teachers/new" className="btn btn-primary">
-                <i className="bi bi-person-plus me-1" /> Add Teacher
+              <Link to="/admin/teachers/allocations" className="btn btn-sm btn-outline-info">
+                <i className="bi bi-journal-arrow-up me-1" />Subject Allocations
+              </Link>
+              <Link to="/admin/teachers/new" className="btn btn-sm btn-primary">
+                <i className="bi bi-person-plus me-1" />Add Teacher
               </Link>
             </div>
           </div>
+          {loading && <LoadingSpinner />}
           {error && <AlertMessage type="danger" message={error} />}
-          <DataTable columns={columns} data={teachers} loading={loading} emptyMessage="No teachers found." />
+          {!loading && !error && (
+            <DataTable columns={columns} data={teachers}
+              actions={(row) => (
+                <div className="d-flex gap-1">
+                  <button className="btn btn-sm btn-outline-primary" style={{ fontSize: 11 }} onClick={() => navigate(`/admin/teachers/${row.id}`)}>
+                    <i className="bi bi-eye" />
+                  </button>
+                  <button className="btn btn-sm btn-outline-secondary" style={{ fontSize: 11 }} onClick={() => navigate(`/admin/teachers/${row.id}/edit`)}>
+                    <i className="bi bi-pencil" />
+                  </button>
+                  <button className="btn btn-sm btn-outline-danger" style={{ fontSize: 11 }} onClick={() => setDeleteTarget(row)}>
+                    <i className="bi bi-trash" />
+                  </button>
+                </div>
+              )}
+            />
+          )}
         </div>
       </div>
-
-      <ConfirmDialog
-        id="confirmDelete"
-        title="Delete Teacher"
-        message="Are you sure you want to delete this teacher?"
-        onConfirm={handleDelete}
-      />
-    </>
+      <ConfirmDialog show={!!deleteTarget} title="Delete Teacher"
+        message={`Delete ${deleteTarget?.full_name} (${deleteTarget?.staff_number})?`}
+        onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} confirmLabel="Delete" />
+    </section>
   );
 }
