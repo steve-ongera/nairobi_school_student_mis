@@ -1,0 +1,1 @@
+export { AttendanceReport as default } from "./Attendance";
