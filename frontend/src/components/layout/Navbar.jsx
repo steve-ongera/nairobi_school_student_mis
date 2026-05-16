@@ -6,10 +6,11 @@ import { useAuth, useTheme } from "../../hooks";
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { toggleSidebar } = useTheme();
-  const navigate = useNavigate();
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const navigate  = useNavigate();
   const searchRef = useRef(null);
+
+  const [showSearch,  setShowSearch]  = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = async () => {
     await logout();
@@ -19,18 +20,15 @@ export default function Navbar() {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // Implement search logic here
-      console.log("Searching for:", searchQuery);
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
       setSearchQuery("");
       setShowSearch(false);
     }
   };
 
-  // Close search on click outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
         setShowSearch(false);
       }
     };
@@ -38,201 +36,173 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Generate initials from full name
   const getInitials = () => {
     if (user?.full_name) {
-      return user.full_name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
+      return user.full_name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
     }
     return user?.email?.charAt(0).toUpperCase() || "U";
   };
 
-  // Get user role display name
   const getRoleDisplay = (role) => {
     const roles = {
-      admin: "Administrator",
+      admin:   "Administrator",
       teacher: "Teacher",
       student: "Student",
-      finance: "Finance Officer"
+      finance: "Finance Officer",
     };
     return roles[role] || role;
   };
 
   return (
     <header className="header">
-      <div className="d-flex align-items-center justify-content-between w-100">
 
-        {/* Logo Section */}
+      {/* ── LEFT: Logo + sidebar toggle ──────────────────────── */}
+      <div className="header-left">
         <Link to="/" className="logo">
           <div className="logo-icon">
             <i className="bi bi-mortarboard-fill" />
           </div>
-          <span>SchoolMIS Pro</span>
+          <span className="logo-text">SchoolMIS Pro</span>
         </Link>
-
-        {/* Sidebar Toggle */}
         <i className="bi bi-list toggle-sidebar-btn" onClick={toggleSidebar} />
+      </div>
 
-        {/* Search Bar */}
-        <div className={`search-bar ${showSearch ? "search-bar-show" : ""}`} ref={searchRef}>
-          <form className="search-form" onSubmit={handleSearch}>
-            <input
-              type="text"
-              placeholder="Search students, exams, fees..."
-              aria-label="Search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button type="submit" aria-label="Submit search">
-              <i className="bi bi-search" />
-            </button>
-          </form>
+      {/* ── CENTRE: Search bar ───────────────────────────────── */}
+      <div
+        className={`header-search${showSearch ? " header-search--open" : ""}`}
+        ref={searchRef}
+      >
+        <form className="search-form" onSubmit={handleSearch}>
+          <input
+            type="text"
+            placeholder="Search students, exams, fees…"
+            aria-label="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button type="submit" aria-label="Submit search">
+            <i className="bi bi-search" />
+          </button>
+        </form>
+      </div>
+
+      {/* ── RIGHT: Action icons ──────────────────────────────── */}
+      <nav className="header-actions">
+
+        {/* Mobile: show search input */}
+        <button
+          className="header-icon-btn d-lg-none"
+          onClick={() => setShowSearch(!showSearch)}
+          aria-label="Toggle search"
+        >
+          <i className="bi bi-search" />
+        </button>
+
+        {/* Notifications dropdown */}
+        <div className="nav-item dropdown">
+          <span
+            className="header-icon-btn"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <i className="bi bi-bell" />
+            <span className="badge-number">3</span>
+          </span>
+
+          <ul className="dropdown-menu dropdown-menu-end">
+            <li className="dropdown-header">
+              <div className="d-flex justify-content-between align-items-center">
+                <h6 className="mb-0">Notifications</h6>
+                <Link to="/notifications" className="small">View all</Link>
+              </div>
+            </li>
+            <li><hr className="dropdown-divider" /></li>
+
+            <li>
+              <Link className="dropdown-item" to="/notifications/payment">
+                <i className="bi bi-cash-coin text-success" />
+                <div>
+                  <div className="fw-semibold">Fee payment received</div>
+                  <small className="text-muted">MPESA – KES 15,000</small>
+                </div>
+              </Link>
+            </li>
+            <li><hr className="dropdown-divider" /></li>
+
+            <li>
+              <Link className="dropdown-item" to="/notifications/exam">
+                <i className="bi bi-journal-check text-primary" />
+                <div>
+                  <div className="fw-semibold">Exam results published</div>
+                  <small className="text-muted">End Term 1 – Form 2</small>
+                </div>
+              </Link>
+            </li>
+            <li><hr className="dropdown-divider" /></li>
+
+            <li>
+              <Link className="dropdown-item" to="/notifications/student">
+                <i className="bi bi-person-plus text-warning" />
+                <div>
+                  <div className="fw-semibold">New student admitted</div>
+                  <small className="text-muted">Form 1 – Stream A</small>
+                </div>
+              </Link>
+            </li>
+          </ul>
         </div>
 
-        {/* Navigation Actions */}
-        <nav className="header-nav ms-auto">
-          <ul className="d-flex align-items-center gap-2">
+        {/* Profile dropdown */}
+        <div className="nav-item dropdown">
+          <span
+            className="nav-profile"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt={user.full_name} className="rounded-circle" />
+            ) : (
+              <div className="avatar-initials">{getInitials()}</div>
+            )}
+            <span className="profile-name">{user?.full_name?.split(" ")[0] || "User"}</span>
+            <i className="bi bi-chevron-down profile-chevron" />
+          </span>
 
-            {/* Mobile Search Toggle */}
-            <li className="nav-item d-block d-lg-none">
-              <button
-                className="nav-icon btn border-0 p-0"
-                onClick={() => setShowSearch(!showSearch)}
-                aria-label="Toggle search"
-              >
-                <i className="bi bi-search" />
+          <ul className="dropdown-menu dropdown-menu-end">
+            <li className="dropdown-header">
+              <h6 className="mb-1">{user?.full_name || user?.email}</h6>
+              <span className="text-capitalize">{getRoleDisplay(user?.role)}</span>
+            </li>
+            <li><hr className="dropdown-divider" /></li>
+
+            <li>
+              <Link className="dropdown-item" to="/profile">
+                <i className="bi bi-person" /><span>My Profile</span>
+              </Link>
+            </li>
+            <li>
+              <Link className="dropdown-item" to="/change-password">
+                <i className="bi bi-shield-lock" /><span>Change Password</span>
+              </Link>
+            </li>
+            <li>
+              <Link className="dropdown-item" to="/settings">
+                <i className="bi bi-sliders2" /><span>Preferences</span>
+              </Link>
+            </li>
+            <li><hr className="dropdown-divider" /></li>
+
+            <li>
+              <button className="dropdown-item text-danger" onClick={handleLogout}>
+                <i className="bi bi-box-arrow-right" /><span>Sign Out</span>
               </button>
             </li>
-
-            {/* Notifications */}
-            <li className="nav-item dropdown">
-              <span
-                className="nav-icon"
-                role="button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-              >
-                <i className="bi bi-bell" />
-                <span className="badge-number">3</span>
-              </span>
-
-              <ul className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                <li className="dropdown-header">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <h6 className="mb-0">Notifications</h6>
-                    <Link to="/notifications" className="small">View all</Link>
-                  </div>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-
-                <li>
-                  <Link className="dropdown-item" to="/notifications/payment">
-                    <i className="bi bi-cash-coin text-success"></i>
-                    <div>
-                      <div className="fw-semibold">Fee payment received</div>
-                      <small className="text-muted">MPESA – KES 15,000</small>
-                    </div>
-                  </Link>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-
-                <li>
-                  <Link className="dropdown-item" to="/notifications/exam">
-                    <i className="bi bi-journal-check text-primary"></i>
-                    <div>
-                      <div className="fw-semibold">Exam results published</div>
-                      <small className="text-muted">End Term 1 – Form 2</small>
-                    </div>
-                  </Link>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-
-                <li>
-                  <Link className="dropdown-item" to="/notifications/student">
-                    <i className="bi bi-person-plus text-warning"></i>
-                    <div>
-                      <div className="fw-semibold">New student admitted</div>
-                      <small className="text-muted">Form 1 – Stream A</small>
-                    </div>
-                  </Link>
-                </li>
-              </ul>
-            </li>
-
-            {/* Profile Dropdown */}
-            <li className="nav-item dropdown pe-2">
-              <span
-                className="nav-profile"
-                role="button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-              >
-                {user?.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.full_name}
-                    className="rounded-circle"
-                  />
-                ) : (
-                  <div className="avatar-initials">{getInitials()}</div>
-                )}
-                <span className="d-none d-md-block">
-                  {user?.full_name?.split(" ")[0] || "User"}
-                </span>
-                <i className="bi bi-chevron-down d-none d-md-block" />
-              </span>
-
-              <ul className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                <li className="dropdown-header">
-                  <h6 className="mb-1">{user?.full_name || user?.email}</h6>
-                  <span className="text-capitalize">
-                    {getRoleDisplay(user?.role)}
-                  </span>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-
-                <li>
-                  <Link className="dropdown-item" to="/profile">
-                    <i className="bi bi-person"></i>
-                    <span>My Profile</span>
-                  </Link>
-                </li>
-
-                <li>
-                  <Link className="dropdown-item" to="/change-password">
-                    <i className="bi bi-shield-lock"></i>
-                    <span>Change Password</span>
-                  </Link>
-                </li>
-
-                <li>
-                  <Link className="dropdown-item" to="/settings">
-                    <i className="bi bi-sliders2"></i>
-                    <span>Preferences</span>
-                  </Link>
-                </li>
-
-                <li><hr className="dropdown-divider" /></li>
-
-                <li>
-                  <button
-                    className="dropdown-item text-danger"
-                    onClick={handleLogout}
-                  >
-                    <i className="bi bi-box-arrow-right"></i>
-                    <span>Sign Out</span>
-                  </button>
-                </li>
-              </ul>
-            </li>
-
           </ul>
-        </nav>
-      </div>
+        </div>
+
+      </nav>
     </header>
   );
 }

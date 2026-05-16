@@ -28,7 +28,7 @@ const NavGroup = ({ icon, label, children, defaultOpen = false }) => {
   const isActive = childArray.some(
     (c) => c?.props?.to && location.pathname.startsWith(c.props.to)
   );
-  
+
   const [isOpen, setIsOpen] = useState(isActive || defaultOpen);
   const collapseId = `nav-${label.replace(/\s+/g, "-").toLowerCase()}`;
 
@@ -55,21 +55,26 @@ const NavGroup = ({ icon, label, children, defaultOpen = false }) => {
         <i className="bi bi-chevron-down ms-auto" />
       </a>
 
-      <div
+      {/* 
+        ✅ FIX: Removed the extra <ul className="nav-content-list"> wrapper.
+        The <ul> inside .nav-content is now unstyled (list-style: none via CSS).
+        Children (<SubItem> components) render their own <li> tags directly.
+      */}
+      <ul
         id={collapseId}
-        className={`nav-content ${isOpen ? "show" : ""}`}
+        className="nav-content"
         style={{ display: isOpen ? "block" : "none" }}
       >
-        <ul className="nav-content-list">
-          {children}
-        </ul>
-      </div>
+        {children}
+      </ul>
     </li>
   );
 };
 
 /** Sub-item inside a NavGroup */
 const SubItem = ({ to, label }) => (
+  // ✅ FIX: <li> here is a direct child of .nav-content <ul>,
+  // so browser default bullets can be cleanly removed via CSS.
   <li>
     <NavLink to={to} className={({ isActive }) => (isActive ? "active" : "")}>
       <i className="bi bi-circle" />
@@ -169,7 +174,7 @@ export default function Sidebar() {
           <>
             <NavHeading>Finance Dashboard</NavHeading>
             <NavItem to="/finance/dashboard" icon="bi-speedometer2" label="Overview" />
-            
+
             <NavHeading>Financial Operations</NavHeading>
             <NavItem to="/finance/invoices"      icon="bi-receipt"    label="Invoices" />
             <NavItem to="/finance/payments"      icon="bi-cash"       label="Payments" />
@@ -194,9 +199,9 @@ export default function Sidebar() {
               <SubItem to="/teacher/marks/analysis"  label="Performance Analysis" />
             </NavGroup>
 
-            <NavItem to="/teacher/attendance"      icon="bi-calendar-check-fill"   label="Attendance" />
-            <NavItem to="/teacher/reports"         icon="bi-bar-chart-line-fill"   label="Class Reports" />
-            <NavItem to="/teacher/timetable"       icon="bi-calendar-week"         label="My Timetable" />
+            <NavItem to="/teacher/attendance" icon="bi-calendar-check-fill" label="Attendance" />
+            <NavItem to="/teacher/reports"    icon="bi-bar-chart-line-fill" label="Class Reports" />
+            <NavItem to="/teacher/timetable"  icon="bi-calendar-week"       label="My Timetable" />
           </>
         )}
 
