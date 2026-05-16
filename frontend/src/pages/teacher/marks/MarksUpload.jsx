@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { getExams, getSubjects, getClassrooms, uploadMarksExcel } from "../../../utils/api";
 import { PageTitle, AlertMessage } from "../../../components/common";
 
+// Helper: unwrap DRF paginated or plain array responses
+const unwrap = (res) => res?.data?.results ?? res?.data ?? [];
+
 export default function MarksUpload() {
   const [exams, setExams] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -9,15 +12,20 @@ export default function MarksUpload() {
   const [selected, setSelected] = useState({ exam: "", subject: "", classroom: "" });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState("");
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [result, setResult] = useState(null);
 
   useEffect(() => {
-    Promise.all([getExams(), getSubjects(), getClassrooms()]).then(([e, s, c]) => {
-      setExams(e.data);
-      setSubjects(s.data);
-      setClassrooms(c.data);
-    });
+    Promise.all([getExams(), getSubjects(), getClassrooms()])
+      .then(([e, s, c]) => {
+        setExams(unwrap(e));
+        setSubjects(unwrap(s));
+        setClassrooms(unwrap(c));
+      })
+      .catch(() =>
+        setFetchError("Failed to load dropdown data. Please refresh the page.")
+      );
   }, []);
 
   const handleUpload = async (e) => {
@@ -39,8 +47,10 @@ export default function MarksUpload() {
       });
       setResult(data);
       setMsg({
-        type: "success",
-        text: `Upload complete: ${data.created} created, ${data.updated} updated.`,
+        type: data.errors?.length ? "warning" : "success",
+        text: `Upload complete: ${data.created} created, ${data.updated} updated.${
+          data.errors?.length ? ` ⚠ ${data.errors.length} row(s) had errors.` : ""
+        }`,
       });
     } catch (err) {
       setMsg({ type: "danger", text: err.response?.data?.detail || "Upload failed." });
@@ -49,6 +59,30 @@ export default function MarksUpload() {
     }
   };
 
+  const selectConfigs = [
+    {
+      label: "Exam",
+      key: "exam",
+      options: exams.map((e) => ({
+        value: e.id,
+        label: `${e.name} – ${e.term_display}`,
+      })),
+    },
+    {
+      label: "Subject",
+      key: "subject",
+      options: subjects.map((s) => ({ value: s.id, label: s.name })),
+    },
+    {
+      label: "Classroom",
+      key: "classroom",
+      options: classrooms.map((c) => ({
+        value: c.id,
+        label: `${c.stream_display} – ${c.academic_year_display}`,
+      })),
+    },
+  ];
+
   return (
     <>
       <PageTitle
@@ -56,15 +90,20 @@ export default function MarksUpload() {
         breadcrumbs={[{ label: "Marks" }, { label: "Upload" }]}
       />
 
-      <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg({ type: "", text: "" })} />
+      {fetchError && <AlertMessage type="danger" message={fetchError} />}
+      <AlertMessage
+        type={msg.type}
+        message={msg.text}
+        onClose={() => setMsg({ type: "", text: "" })}
+      />
 
       <div className="row">
+        {/* ── Left: Upload form ── */}
         <div className="col-lg-7">
           <div className="card">
             <div className="card-body">
               <h5 className="card-title">Upload Excel File</h5>
 
-              {/* Template info */}
               <div className="alert alert-info d-flex gap-2 align-items-start mb-4">
                 <i className="bi bi-info-circle-fill mt-1" />
                 <div>
@@ -82,37 +121,22 @@ export default function MarksUpload() {
 
               <form onSubmit={handleUpload}>
                 <div className="row g-3 mb-3">
-                  {[
-                    {
-                      label: "Exam",
-                      key: "exam",
-                      options: exams.map((e) => ({ value: e.id, label: `${e.name} – ${e.term_display}` })),
-                    },
-                    {
-                      label: "Subject",
-                      key: "subject",
-                      options: subjects.map((s) => ({ value: s.id, label: s.name })),
-                    },
-                    {
-                      label: "Classroom",
-                      key: "classroom",
-                      options: classrooms.map((c) => ({
-                        value: c.id,
-                        label: `${c.stream_display} – ${c.academic_year_display}`,
-                      })),
-                    },
-                  ].map(({ label, key, options }) => (
+                  {selectConfigs.map(({ label, key, options }) => (
                     <div key={key} className="col-md-6">
                       <label className="form-label fw-600">{label}</label>
                       <select
                         className="form-select"
                         value={selected[key]}
-                        onChange={(e) => setSelected((s) => ({ ...s, [key]: e.target.value }))}
+                        onChange={(e) =>
+                          setSelected((s) => ({ ...s, [key]: e.target.value }))
+                        }
                         required
                       >
                         <option value="">— Select {label} —</option>
                         {options.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -125,7 +149,10 @@ export default function MarksUpload() {
                     type="file"
                     className="form-control"
                     accept=".xlsx,.xls"
-                    onChange={(e) => setFile(e.target.files[0])}
+                    onChange={(e) => {
+                      setFile(e.target.files[0]);
+                      setResult(null);
+                    }}
                     required
                   />
                   {file && (
@@ -136,7 +163,11 @@ export default function MarksUpload() {
                   )}
                 </div>
 
-                <button type="submit" className="btn btn-primary" disabled={loading}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loading}
+                >
                   {loading ? (
                     <>
                       <span className="spinner-border spinner-border-sm me-2" />
@@ -154,20 +185,26 @@ export default function MarksUpload() {
           </div>
         </div>
 
-        {/* Results panel */}
+        {/* ── Right: Results + Instructions ── */}
         <div className="col-lg-5">
           {result && (
-            <div className="card">
+            <div className="card mb-3">
               <div className="card-body">
                 <h5 className="card-title">Upload Results</h5>
                 <div className="row text-center mb-3">
                   {[
                     { label: "Created", value: result.created, color: "success" },
                     { label: "Updated", value: result.updated, color: "primary" },
-                    { label: "Errors", value: result.errors?.length || 0, color: "danger" },
+                    {
+                      label: "Errors",
+                      value: result.errors?.length || 0,
+                      color: "danger",
+                    },
                   ].map((item) => (
                     <div key={item.label} className="col-4">
-                      <div className={`fw-700 fs-4 text-${item.color}`}>{item.value}</div>
+                      <div className={`fw-700 fs-4 text-${item.color}`}>
+                        {item.value}
+                      </div>
                       <small className="text-muted">{item.label}</small>
                     </div>
                   ))}
@@ -175,7 +212,10 @@ export default function MarksUpload() {
 
                 {result.errors?.length > 0 && (
                   <>
-                    <h6 className="text-danger mb-2">Errors</h6>
+                    <h6 className="text-danger mb-2">
+                      <i className="bi bi-exclamation-triangle me-1" />
+                      Row Errors
+                    </h6>
                     <div
                       className="table-responsive"
                       style={{ maxHeight: 300, overflowY: "auto" }}
@@ -195,7 +235,10 @@ export default function MarksUpload() {
                               <td>
                                 <code>{err.adm_no || err.student || "—"}</code>
                               </td>
-                              <td className="text-danger" style={{ fontSize: 12 }}>
+                              <td
+                                className="text-danger"
+                                style={{ fontSize: 12 }}
+                              >
                                 {err.error}
                               </td>
                             </tr>
@@ -209,21 +252,22 @@ export default function MarksUpload() {
             </div>
           )}
 
-          {/* Instructions card */}
           <div className="card">
             <div className="card-body">
               <h5 className="card-title">Instructions</h5>
               <ol className="text-muted" style={{ fontSize: 14 }}>
                 <li className="mb-2">Select the exam, subject, and classroom.</li>
                 <li className="mb-2">
-                  Prepare your Excel file with columns: <code>admission_number</code>,{" "}
-                  <code>marks</code>, <code>remarks</code>.
+                  Prepare your Excel file with columns:{" "}
+                  <code>admission_number</code>, <code>marks</code>,{" "}
+                  <code>remarks</code>.
                 </li>
                 <li className="mb-2">Marks must be between 0 and 100.</li>
                 <li className="mb-2">
-                  If a result already exists for a student, it will be updated.
+                  If a result already exists for a student it will be updated,
+                  not duplicated.
                 </li>
-                <li>Only students with non-zero marks are saved.</li>
+                <li>Rows with invalid marks or unknown admission numbers are skipped and listed as errors.</li>
               </ol>
             </div>
           </div>
