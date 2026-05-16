@@ -65,6 +65,38 @@ export default function ClassAnalysis() {
       }
     : null;
 
+  // ── Pivot: one row per student, subjects as columns ───────────────────────
+  // Collect unique subjects (sorted alphabetically)
+  const subjectNames = [...new Set(results.map((r) => r.subject_name))].sort();
+
+  // Build a map: student_id → { student_name, admission_number, subjects: { [subject]: { marks, grade } } }
+  const studentMap = results.reduce((acc, r) => {
+    const key = r.admission_number;
+    if (!acc[key]) {
+      acc[key] = {
+        student_name: r.student_name,
+        admission_number: r.admission_number,
+        subjects: {},
+      };
+    }
+    acc[key].subjects[r.subject_name] = { marks: r.marks, grade: r.grade };
+    return acc;
+  }, {});
+
+  const pivotRows = Object.values(studentMap).sort((a, b) =>
+    a.student_name.localeCompare(b.student_name)
+  );
+
+  // Per-student total & mean
+  const withTotals = pivotRows.map((row) => {
+    const scores = subjectNames
+      .map((s) => parseFloat(row.subjects[s]?.marks))
+      .filter((v) => !isNaN(v));
+    const total = scores.reduce((a, b) => a + b, 0);
+    const mean = scores.length ? (total / scores.length).toFixed(1) : "—";
+    return { ...row, total: scores.length ? total : "—", mean };
+  });
+
   // Group results by subject for chart
   const subjectData = results.reduce((acc, r) => {
     if (!acc[r.subject_name]) {
@@ -79,6 +111,17 @@ export default function ClassAnalysis() {
     subject_name: s.subject_name,
     mean_score: (s.total / s.count).toFixed(1),
   }));
+
+  // Export: flatten pivot back to rows for CSV
+  const exportData = withTotals.flatMap((row) =>
+    subjectNames.map((sub) => ({
+      student_name: row.student_name,
+      admission_number: row.admission_number,
+      subject_name: sub,
+      marks: row.subjects[sub]?.marks ?? "—",
+      grade: row.subjects[sub]?.grade ?? "—",
+    }))
+  );
 
   const exportColumns = [
     { key: "student_name", label: "Student" },
@@ -214,57 +257,128 @@ export default function ClassAnalysis() {
             </div>
           )}
 
-          {/* ── Results table ── */}
+          {/* ── Pivoted Results table ── */}
           <div className="card">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h5 className="card-title mb-0">
-                  Results ({results.length})
+                  Results
+                  <span className="count-chip" style={{ marginLeft: 10, fontSize: 13 }}>
+                    {pivotRows.length} students
+                  </span>
                 </h5>
                 <ExportCSV
-                  data={results}
+                  data={exportData}
                   columns={exportColumns}
                   filename="class_analysis.csv"
                 />
               </div>
+
               <div className="table-responsive">
                 <table className="table table-hover table-bordered align-middle">
                   <thead className="table-light">
                     <tr>
-                      <th>Student</th>
-                      <th>Adm No</th>
-                      <th>Subject</th>
-                      <th>Marks</th>
-                      <th>Grade</th>
-                      <th>Pass?</th>
+                      {/* Fixed columns */}
+                      <th style={{ whiteSpace: "nowrap" }}>Adm No</th>
+                      <th style={{ whiteSpace: "nowrap" }}>Student</th>
+
+                      {/* One column per subject — just the subject name, no repetition */}
+                      {subjectNames.map((sub) => (
+                        <th
+                          key={sub}
+                          style={{ whiteSpace: "nowrap", textAlign: "center" }}
+                        >
+                          {sub}
+                        </th>
+                      ))}
+
+                      {/* Summary columns */}
+                      <th style={{ textAlign: "center", whiteSpace: "nowrap" }}>Total</th>
+                      <th style={{ textAlign: "center", whiteSpace: "nowrap" }}>Mean</th>
+                      <th style={{ textAlign: "center", whiteSpace: "nowrap" }}>Pass?</th>
                     </tr>
                   </thead>
+
                   <tbody>
-                    {results.map((r) => (
-                      <tr key={r.id}>
-                        <td className="fw-600">{r.student_name}</td>
-                        <td>
-                          <code style={{ fontSize: 12 }}>
-                            {r.admission_number}
-                          </code>
-                        </td>
-                        <td>{r.subject_name}</td>
-                        <td>{r.marks}</td>
-                        <td>
-                          <GradeBadge grade={r.grade} />
-                        </td>
-                        <td>
-                          <span
-                            className={`badge bg-${
-                              parseFloat(r.marks) >= 50 ? "success" : "danger"
-                            }`}
-                          >
-                            {parseFloat(r.marks) >= 50 ? "Pass" : "Fail"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {withTotals.map((row) => {
+                      const meanVal = parseFloat(row.mean);
+                      const passed = !isNaN(meanVal) && meanVal >= 50;
+
+                      return (
+                        <tr key={row.admission_number}>
+                          {/* Adm No */}
+                          <td>
+                            <code style={{ fontSize: 12 }}>{row.admission_number}</code>
+                          </td>
+
+                          {/* Student name — appears once per row */}
+                          <td className="fw-600" style={{ whiteSpace: "nowrap" }}>
+                            {row.student_name}
+                          </td>
+
+                          {/* Marks for each subject — just the number + grade badge */}
+                          {subjectNames.map((sub) => {
+                            const entry = row.subjects[sub];
+                            return (
+                              <td key={sub} style={{ textAlign: "center" }}>
+                                {entry ? (
+                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                                    <span style={{ fontWeight: 600 }}>{entry.marks}</span>
+                                    <GradeBadge grade={entry.grade} />
+                                  </div>
+                                ) : (
+                                  <span style={{ color: "var(--text-muted)" }}>—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                          {/* Total */}
+                          <td style={{ textAlign: "center", fontWeight: 700 }}>
+                            {row.total}
+                          </td>
+
+                          {/* Mean */}
+                          <td style={{ textAlign: "center", fontWeight: 700, color: "var(--primary)" }}>
+                            {row.mean}
+                          </td>
+
+                          {/* Pass / Fail based on mean */}
+                          <td style={{ textAlign: "center" }}>
+                            <span className={`badge bg-${passed ? "success" : "danger"}`}>
+                              {passed ? "Pass" : "Fail"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
+
+                  {/* ── Subject column means as a footer ── */}
+                  {withTotals.length > 1 && (
+                    <tfoot>
+                      <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
+                        <td colSpan={2} style={{ color: "var(--text-muted)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                          Subject Mean
+                        </td>
+                        {subjectNames.map((sub) => {
+                          const scores = results
+                            .filter((r) => r.subject_name === sub)
+                            .map((r) => parseFloat(r.marks))
+                            .filter((v) => !isNaN(v));
+                          const avg = scores.length
+                            ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
+                            : "—";
+                          return (
+                            <td key={sub} style={{ textAlign: "center", color: "var(--primary)" }}>
+                              {avg}
+                            </td>
+                          );
+                        })}
+                        <td colSpan={3} />
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             </div>
