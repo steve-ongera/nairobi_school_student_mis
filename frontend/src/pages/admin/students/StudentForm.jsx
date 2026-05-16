@@ -1,295 +1,222 @@
-// pages/admin/students/StudentForm.jsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { PageTitle } from "../../../components/common/PageTitle";
-import { InputField, SelectField, DateField, TextareaField } from "../../../components/forms/InputField";
-import { AlertMessage, LoadingSpinner } from "../../../components/common/DataTable";
-import useFetch from "../../../hooks/useFetch";
-import { studentsAPI, academicsAPI } from "../../../utils/api";
+import { createStudent, updateStudent, getStudent, getClassrooms, getForms } from "../../../utils/api";
+import { PageTitle, AlertMessage } from "../../../components/common";
 
 const INITIAL = {
-  email: "", first_name: "", last_name: "", phone: "", password: "",
-  admission_number: "", date_of_birth: "", gender: "", nationality: "Kenyan",
-  national_id: "", birth_certificate_number: "", kcpe_index_number: "", kcpe_marks: "",
+  email: "", first_name: "", last_name: "", phone: "",
+  admission_number: "", date_of_birth: "", gender: "",
+  nationality: "Kenyan", kcpe_marks: "", kcpe_index_number: "",
   admission_date: new Date().toISOString().slice(0, 10),
-  admitted_to_form: "", current_classroom: "", boarding_status: "day",
-  dormitory: "", bed_number: "", blood_group: "", medical_conditions: "", medical_insurance: "",
-  emergency_contact_name: "", emergency_contact_phone: "",
+  boarding_status: "day", current_classroom: "", parent: "",
+  dormitory: "", bed_number: "", blood_group: "", medical_conditions: "",
 };
 
 export default function StudentForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const isEdit = !!id;
-
   const [form, setForm] = useState(INITIAL);
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const [step, setStep] = useState(1);
-
-  const { data: formsData } = useFetch(() => academicsAPI.getForms(), []);
-  const { data: classroomsData } = useFetch(() => academicsAPI.getClassrooms(), []);
-  const { data: existingStudent, loading: loadingStudent } = useFetch(
-    () => (isEdit ? studentsAPI.getStudent(id) : Promise.resolve({ data: null })), [id]
-  );
+  const [classrooms, setClassrooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const isEdit = Boolean(id);
 
   useEffect(() => {
-    if (isEdit && existingStudent && existingStudent.user) {
-      setForm({
-        ...INITIAL,
-        email: existingStudent.user?.email || "",
-        first_name: existingStudent.user?.first_name || "",
-        last_name: existingStudent.user?.last_name || "",
-        phone: existingStudent.user?.phone || "",
-        admission_number: existingStudent.admission_number || "",
-        date_of_birth: existingStudent.date_of_birth || "",
-        gender: existingStudent.gender || "",
-        nationality: existingStudent.nationality || "Kenyan",
-        national_id: existingStudent.national_id || "",
-        birth_certificate_number: existingStudent.birth_certificate_number || "",
-        kcpe_index_number: existingStudent.kcpe_index_number || "",
-        kcpe_marks: existingStudent.kcpe_marks || "",
-        admission_date: existingStudent.admission_date || "",
-        admitted_to_form: existingStudent.admitted_to_form || "",
-        current_classroom: existingStudent.current_classroom?.id || "",
-        boarding_status: existingStudent.boarding_status || "day",
-        dormitory: existingStudent.dormitory || "",
-        bed_number: existingStudent.bed_number || "",
-        blood_group: existingStudent.blood_group || "",
-        medical_conditions: existingStudent.medical_conditions || "",
-        medical_insurance: existingStudent.medical_insurance || "",
-        emergency_contact_name: existingStudent.emergency_contact_name || "",
-        emergency_contact_phone: existingStudent.emergency_contact_phone || "",
-      });
+    getClassrooms().then((r) => setClassrooms(r.data)).catch(() => {});
+    if (isEdit) {
+      getStudent(id).then((r) => {
+        const s = r.data;
+        setForm({
+          email: s.email || "",
+          first_name: s.user?.first_name || "",
+          last_name: s.user?.last_name || "",
+          phone: s.user?.phone || "",
+          admission_number: s.admission_number || "",
+          date_of_birth: s.date_of_birth || "",
+          gender: s.gender || "",
+          nationality: s.nationality || "Kenyan",
+          kcpe_marks: s.kcpe_marks || "",
+          kcpe_index_number: s.kcpe_index_number || "",
+          admission_date: s.admission_date || "",
+          boarding_status: s.boarding_status || "day",
+          current_classroom: s.current_classroom?.id || "",
+          dormitory: s.dormitory || "",
+          bed_number: s.bed_number || "",
+          blood_group: s.blood_group || "",
+          medical_conditions: s.medical_conditions || "",
+        });
+      }).catch(() => {});
     }
-  }, [existingStudent, isEdit]);
+  }, [id]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
-    setErrors((err) => ({ ...err, [name]: "" }));
-  };
-
-  const validate = () => {
-    const e = {};
-    if (!form.email) e.email = "Email is required";
-    if (!form.first_name) e.first_name = "First name is required";
-    if (!form.last_name) e.last_name = "Last name is required";
-    if (!form.admission_number) e.admission_number = "Admission number is required";
-    if (!form.date_of_birth) e.date_of_birth = "Date of birth is required";
-    if (!form.gender) e.gender = "Gender is required";
-    if (!form.admission_date) e.admission_date = "Admission date is required";
-    return e;
-  };
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); setStep(1); return; }
-    setSaving(true);
+    setLoading(true);
+    setError("");
     try {
-      const payload = { ...form };
-      if (!payload.password) payload.password = payload.admission_number;
-      if (!payload.kcpe_marks) delete payload.kcpe_marks;
-
       if (isEdit) {
-        await studentsAPI.updateStudent(id, payload);
-        setMsg({ type: "success", text: "Student updated successfully." });
+        await updateStudent(id, form);
       } else {
-        await studentsAPI.createStudent(payload);
-        setMsg({ type: "success", text: "Student admitted successfully." });
-        setForm(INITIAL);
-        setStep(1);
+        await createStudent(form);
       }
+      navigate("/admin/students");
     } catch (err) {
-      const data = err.response?.data || {};
-      const fieldErrors = {};
-      Object.keys(data).forEach((k) => {
-        fieldErrors[k] = Array.isArray(data[k]) ? data[k][0] : data[k];
-      });
-      setErrors(fieldErrors);
-      setMsg({ type: "danger", text: data.detail || "Failed to save student. Check the form for errors." });
+      const data = err.response?.data;
+      setError(
+        typeof data === "string"
+          ? data
+          : Object.entries(data || {})
+              .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+              .join(" | ") || "Failed to save student."
+      );
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const forms = formsData || [];
-  const classrooms = classroomsData?.results || classroomsData || [];
-
-  if (loadingStudent) return <LoadingSpinner />;
+  const Field = ({ label, name, type = "text", options, required = false }) => (
+    <div className="col-md-6 mb-3">
+      <label className="form-label fw-600">{label}{required && " *"}</label>
+      {options ? (
+        <select
+          className="form-select"
+          value={form[name]}
+          onChange={(e) => set(name, e.target.value)}
+          required={required}
+        >
+          <option value="">— Select —</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type={type}
+          className="form-control"
+          value={form[name]}
+          onChange={(e) => set(name, e.target.value)}
+          required={required}
+        />
+      )}
+    </div>
+  );
 
   return (
-    <section>
+    <>
       <PageTitle
         title={isEdit ? "Edit Student" : "Admit New Student"}
         breadcrumbs={[
           { label: "Students", to: "/admin/students" },
-          { label: isEdit ? "Edit" : "Admit" },
+          { label: isEdit ? "Edit" : "New" },
         ]}
       />
 
-      {msg && <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg(null)} className="mb-3" />}
+      <AlertMessage type="danger" message={error} onClose={() => setError("")} />
 
-      {/* Step indicator */}
-      <div className="card mb-3">
-        <div className="card-body py-3">
-          <div className="d-flex gap-3">
-            {["Personal Info", "Academic Details", "Boarding & Medical"].map((label, i) => (
-              <button
-                key={i}
-                className={`btn btn-sm ${step === i + 1 ? "btn-primary" : "btn-outline-secondary"}`}
-                onClick={() => setStep(i + 1)}
-                type="button"
-              >
-                <span className="me-1">{i + 1}.</span> {label}
+      <div className="card">
+        <div className="card-body">
+          <h5 className="card-title">{isEdit ? "Update Student" : "Student Admission Form"}</h5>
+          <form onSubmit={handleSubmit}>
+            {/* Account */}
+            <div className="row">
+              <h6 className="text-primary-dark fw-700 mb-3 mt-2">Account Information</h6>
+              <Field label="First Name" name="first_name" required />
+              <Field label="Last Name" name="last_name" required />
+              <Field label="Email Address" name="email" type="email" required={!isEdit} />
+              <Field label="Phone Number" name="phone" type="tel" />
+            </div>
+
+            <hr />
+
+            {/* Student */}
+            <div className="row">
+              <h6 className="text-primary-dark fw-700 mb-3">Student Details</h6>
+              <Field label="Admission Number" name="admission_number" required />
+              <Field label="Date of Birth" name="date_of_birth" type="date" />
+              <Field
+                label="Gender"
+                name="gender"
+                options={[
+                  { value: "male", label: "Male" },
+                  { value: "female", label: "Female" },
+                ]}
+                required
+              />
+              <Field label="Nationality" name="nationality" />
+              <Field label="KCPE Index No" name="kcpe_index_number" />
+              <Field label="KCPE Marks" name="kcpe_marks" type="number" />
+              <Field label="Admission Date" name="admission_date" type="date" required />
+              <Field
+                label="Classroom"
+                name="current_classroom"
+                options={classrooms.map((c) => ({
+                  value: c.id,
+                  label: `${c.stream_display} – ${c.academic_year_display}`,
+                }))}
+              />
+              <Field
+                label="Boarding Status"
+                name="boarding_status"
+                options={[
+                  { value: "day", label: "Day Scholar" },
+                  { value: "boarding", label: "Boarding" },
+                  { value: "day_boarding", label: "Day Boarding" },
+                ]}
+              />
+            </div>
+
+            <hr />
+
+            {/* Boarding */}
+            {form.boarding_status !== "day" && (
+              <div className="row">
+                <h6 className="text-primary-dark fw-700 mb-3">Boarding Details</h6>
+                <Field label="Dormitory" name="dormitory" />
+                <Field label="Bed Number" name="bed_number" />
+              </div>
+            )}
+
+            {/* Medical */}
+            <div className="row">
+              <h6 className="text-primary-dark fw-700 mb-3">Medical</h6>
+              <Field
+                label="Blood Group"
+                name="blood_group"
+                options={["A+","A-","B+","B-","O+","O-","AB+","AB-"].map((b) => ({ value: b, label: b }))}
+              />
+              <div className="col-12 mb-3">
+                <label className="form-label fw-600">Medical Conditions / Allergies</label>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  value={form.medical_conditions}
+                  onChange={(e) => set("medical_conditions", e.target.value)}
+                  placeholder="List any known conditions or 'None'"
+                />
+              </div>
+            </div>
+
+            <div className="d-flex gap-2">
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? (
+                  <><span className="spinner-border spinner-border-sm me-2" />Saving…</>
+                ) : (
+                  <><i className="bi bi-check2-circle me-2" />{isEdit ? "Update" : "Admit Student"}</>
+                )}
               </button>
-            ))}
-          </div>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => navigate("/admin/students")}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       </div>
-
-      <form onSubmit={handleSubmit} noValidate>
-        <div className="card">
-          <div className="card-body">
-
-            {/* Step 1: Personal Info */}
-            {step === 1 && (
-              <>
-                <h6 className="card-title">Personal Information</h6>
-                <div className="row">
-                  <div className="col-md-6">
-                    <InputField label="First Name" name="first_name" value={form.first_name} onChange={handleChange} required error={errors.first_name} />
-                  </div>
-                  <div className="col-md-6">
-                    <InputField label="Last Name" name="last_name" value={form.last_name} onChange={handleChange} required error={errors.last_name} />
-                  </div>
-                  <div className="col-md-6">
-                    <InputField label="Email Address" name="email" type="email" value={form.email} onChange={handleChange} required error={errors.email} placeholder="student@school.ac.ke" helpText="This will be used for login" />
-                  </div>
-                  <div className="col-md-6">
-                    <InputField label="Phone Number" name="phone" value={form.phone} onChange={handleChange} placeholder="0712345678" />
-                  </div>
-                  <div className="col-md-4">
-                    <SelectField label="Gender" name="gender" value={form.gender} onChange={handleChange} required error={errors.gender}
-                      options={[{ value: "M", label: "Male" }, { value: "F", label: "Female" }, { value: "O", label: "Other" }]} />
-                  </div>
-                  <div className="col-md-4">
-                    <DateField label="Date of Birth" name="date_of_birth" value={form.date_of_birth} onChange={handleChange} required error={errors.date_of_birth} />
-                  </div>
-                  <div className="col-md-4">
-                    <InputField label="Nationality" name="nationality" value={form.nationality} onChange={handleChange} />
-                  </div>
-                  <div className="col-md-6">
-                    <InputField label="National ID (if 18+)" name="national_id" value={form.national_id} onChange={handleChange} />
-                  </div>
-                  <div className="col-md-6">
-                    <InputField label="Birth Certificate Number" name="birth_certificate_number" value={form.birth_certificate_number} onChange={handleChange} />
-                  </div>
-                  <div className="col-md-6">
-                    <InputField label="Emergency Contact Name" name="emergency_contact_name" value={form.emergency_contact_name} onChange={handleChange} />
-                  </div>
-                  <div className="col-md-6">
-                    <InputField label="Emergency Contact Phone" name="emergency_contact_phone" value={form.emergency_contact_phone} onChange={handleChange} placeholder="0712345678" />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Step 2: Academic Details */}
-            {step === 2 && (
-              <>
-                <h6 className="card-title">Academic Information</h6>
-                <div className="row">
-                  <div className="col-md-4">
-                    <InputField label="Admission Number" name="admission_number" value={form.admission_number} onChange={handleChange} required error={errors.admission_number} placeholder="e.g. 1023" />
-                  </div>
-                  <div className="col-md-4">
-                    <DateField label="Admission Date" name="admission_date" value={form.admission_date} onChange={handleChange} required error={errors.admission_date} />
-                  </div>
-                  <div className="col-md-4">
-                    <InputField label="Password" name="password" type="password" value={form.password} onChange={handleChange} helpText="Defaults to admission number if blank" />
-                  </div>
-                  <div className="col-md-4">
-                    <SelectField label="Admitted to Form" name="admitted_to_form" value={form.admitted_to_form} onChange={handleChange}
-                      options={forms.map((f) => ({ value: f.id, label: f.name }))} />
-                  </div>
-                  <div className="col-md-4">
-                    <SelectField label="Current Classroom" name="current_classroom" value={form.current_classroom} onChange={handleChange}
-                      options={classrooms.map((c) => ({ value: c.id, label: c.stream_display }))} />
-                  </div>
-                  <div className="col-md-4">
-                    <InputField label="KCPE Index Number" name="kcpe_index_number" value={form.kcpe_index_number} onChange={handleChange} />
-                  </div>
-                  <div className="col-md-4">
-                    <InputField label="KCPE Marks (out of 500)" name="kcpe_marks" type="number" value={form.kcpe_marks} onChange={handleChange} />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Step 3: Boarding & Medical */}
-            {step === 3 && (
-              <>
-                <h6 className="card-title">Boarding & Medical Information</h6>
-                <div className="row">
-                  <div className="col-md-4">
-                    <SelectField label="Boarding Status" name="boarding_status" value={form.boarding_status} onChange={handleChange}
-                      options={[{ value: "day", label: "Day Scholar" }, { value: "boarder", label: "Boarder" }]} />
-                  </div>
-                  {form.boarding_status === "boarder" && (
-                    <>
-                      <div className="col-md-4">
-                        <InputField label="Dormitory" name="dormitory" value={form.dormitory} onChange={handleChange} placeholder="e.g. East Wing" />
-                      </div>
-                      <div className="col-md-4">
-                        <InputField label="Bed Number" name="bed_number" value={form.bed_number} onChange={handleChange} placeholder="e.g. 14A" />
-                      </div>
-                    </>
-                  )}
-                  <div className="col-md-3">
-                    <SelectField label="Blood Group" name="blood_group" value={form.blood_group} onChange={handleChange}
-                      options={["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((g) => ({ value: g, label: g }))} />
-                  </div>
-                  <div className="col-md-5">
-                    <InputField label="Medical Insurance" name="medical_insurance" value={form.medical_insurance} onChange={handleChange} placeholder="e.g. NHIF, School Insurance" />
-                  </div>
-                  <div className="col-md-12">
-                    <TextareaField label="Medical Conditions / Allergies" name="medical_conditions" value={form.medical_conditions} onChange={handleChange} rows={3} placeholder="List any known conditions, allergies, or special needs…" />
-                  </div>
-                </div>
-              </>
-            )}
-
-          </div>
-        </div>
-
-        {/* Navigation + Submit */}
-        <div className="d-flex justify-content-between mt-2">
-          <div>
-            {step > 1 && (
-              <button type="button" className="btn btn-outline-secondary me-2" onClick={() => setStep((s) => s - 1)}>
-                <i className="bi bi-arrow-left me-1" /> Previous
-              </button>
-            )}
-          </div>
-          <div className="d-flex gap-2">
-            <button type="button" className="btn btn-outline-secondary" onClick={() => navigate("/admin/students")}>
-              Cancel
-            </button>
-            {step < 3 ? (
-              <button type="button" className="btn btn-primary" onClick={() => setStep((s) => s + 1)}>
-                Next <i className="bi bi-arrow-right ms-1" />
-              </button>
-            ) : (
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? <><span className="spinner-border spinner-border-sm me-2" />Saving…</> : <><i className="bi bi-check-lg me-1" />{isEdit ? "Update Student" : "Admit Student"}</>}
-              </button>
-            )}
-          </div>
-        </div>
-      </form>
-    </section>
+    </>
   );
 }
