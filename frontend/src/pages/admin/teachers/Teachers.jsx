@@ -11,194 +11,6 @@ import {
   PageTitle, DataTable, SearchBar, AlertMessage, ConfirmDialog, LoadingSpinner,
 } from "../../../components/common";
 
-/* ─── Scoped styles (shared across all three exports) ──────────────── */
-const styles = `
-  /* Toolbar */
-  .tbl-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-
-  .tbl-toolbar__right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  /* Action buttons */
-  .tbl-actions { display: flex; gap: 6px; }
-
-  .tbl-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    border: none;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 150ms ease;
-  }
-
-  .tbl-btn--view { background: #eff6ff; color: var(--primary); }
-  .tbl-btn--edit { background: #fef3c7; color: #b45309; }
-  .tbl-btn--del  { background: #fef2f2; color: var(--danger); }
-
-  .tbl-btn--view:hover { background: var(--primary); color: white; }
-  .tbl-btn--edit:hover { background: var(--warning);  color: white; }
-  .tbl-btn--del:hover  { background: var(--danger);   color: white; }
-
-  /* Teacher name cell */
-  .teacher-cell {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .teacher-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    background: linear-gradient(135deg, var(--accent), #818cf8);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 13px;
-    flex-shrink: 0;
-  }
-
-  .teacher-cell__name {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 13px;
-    line-height: 1.3;
-  }
-
-  .teacher-cell__sub {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 1px;
-  }
-
-  /* Status / count badges */
-  .status-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .status-chip--active   { background: #ecfdf5; color: #065f46; }
-  .status-chip--inactive { background: #f1f5f9; color: var(--text-muted); }
-
-  .count-chip {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 700;
-    background: var(--primary-light);
-    color: var(--primary-dark);
-  }
-
-  /* ── Form styles ── */
-  .form-section-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
-  }
-
-  .form-label { font-weight: 600; font-size: 13px; }
-
-  .form-control, .form-select {
-    border-radius: 6px;
-    border: 1.5px solid var(--border);
-    font-size: 14px;
-    padding: 9px 12px;
-    transition: border-color 150ms ease, box-shadow 150ms ease;
-  }
-
-  .form-control:focus, .form-select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-    outline: none;
-  }
-
-  /* ── Allocation table ── */
-  .alloc-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-
-  .alloc-table thead th {
-    text-align: left;
-    padding: 12px 16px;
-    background: #f8fafc;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .alloc-table tbody td {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-light);
-    vertical-align: middle;
-    color: var(--text-secondary);
-  }
-
-  .alloc-table tbody tr:last-child td { border-bottom: none; }
-
-  .alloc-table tbody tr:hover { background: #fafbfc; }
-
-  .alloc-teacher { font-weight: 600; color: var(--text-primary); }
-  .alloc-subject { color: var(--text-primary); }
-  .alloc-class   { font-size: 12px; color: var(--text-muted); }
-
-  /* ── Allocation form card ── */
-  .alloc-form-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr) auto;
-    gap: 12px;
-    align-items: end;
-  }
-
-  @media (max-width: 992px) {
-    .alloc-form-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  @media (max-width: 576px) {
-    .alloc-form-grid {
-      grid-template-columns: 1fr;
-    }
-    .tbl-toolbar { flex-direction: column; align-items: flex-start; }
-    .tbl-toolbar__right { width: 100%; }
-  }
-`;
-
 /* ── TeacherList ─────────────────────────────────────────────────────── */
 export function TeacherList() {
   const [search,   setSearch]   = useState("");
@@ -239,7 +51,11 @@ export function TeacherList() {
             {t.full_name?.charAt(0).toUpperCase()}
           </div>
           <div>
-            <Link to={`/admin/teachers/${t.id}`} className="teacher-cell__name" style={{ textDecoration: "none", color: "inherit" }}>
+            <Link
+              to={`/admin/teachers/${t.id}`}
+              className="teacher-cell__name"
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
               {t.full_name}
             </Link>
             <div className="teacher-cell__sub">{t.email}</div>
@@ -296,8 +112,6 @@ export function TeacherList() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
-
       <PageTitle title="Teachers" breadcrumbs={[{ label: "Teachers" }]} />
 
       <AlertMessage
@@ -317,7 +131,7 @@ export function TeacherList() {
                 placeholder="Search by name or email…"
               />
               <Link to="/admin/teachers/new" className="btn btn-primary btn-sm">
-                <i className="bi bi-person-plus me-1" /> Add Teacher
+                <i className="bi bi-person-plus" /> Add Teacher
               </Link>
             </div>
           </div>
@@ -345,21 +159,21 @@ export function TeacherList() {
 
 /* ── TeacherForm ─────────────────────────────────────────────────────── */
 export function TeacherForm() {
-  const { id }     = useParams();
-  const navigate   = useNavigate();
-  const isEdit     = Boolean(id);
+  const { id }   = useParams();
+  const navigate = useNavigate();
+  const isEdit   = Boolean(id);
 
   const [form, setForm] = useState({
-    email:               "",
-    first_name:          "",
-    last_name:           "",
-    phone:               "",
-    staff_number:        "",
-    tsc_number:          "",
-    department:          "",
-    qualification:       "",
-    date_joined_school:  new Date().toISOString().slice(0, 10),
-    password:            "school@2024",
+    email:              "",
+    first_name:         "",
+    last_name:          "",
+    phone:              "",
+    staff_number:       "",
+    tsc_number:         "",
+    department:         "",
+    qualification:      "",
+    date_joined_school: new Date().toISOString().slice(0, 10),
+    password:           "school@2024",
   });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
@@ -406,8 +220,9 @@ export function TeacherForm() {
     }
   };
 
-  /* Reusable field */
-  const Field = ({ label, name, type = "text", required = false, placeholder, colClass = "col-md-6" }) => (
+  const Field = ({
+    label, name, type = "text", required = false, placeholder, colClass = "col-md-6",
+  }) => (
     <div className={`${colClass} mb-3`}>
       <label className="form-label">
         {label}{required && <span className="text-danger ms-1">*</span>}
@@ -425,8 +240,6 @@ export function TeacherForm() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
-
       <PageTitle
         title={isEdit ? "Edit Teacher" : "Add Teacher"}
         breadcrumbs={[
@@ -448,19 +261,17 @@ export function TeacherForm() {
         <div className="card-body">
           <form onSubmit={handleSubmit}>
 
-            {/* Account section */}
             <div className="form-section-label">Account Information</div>
             <div className="row">
-              <Field label="First Name"  name="first_name"  required />
-              <Field label="Last Name"   name="last_name"   required />
-              <Field label="Email"       name="email"       type="email" required={!isEdit} />
-              <Field label="Phone"       name="phone"       type="tel" />
+              <Field label="First Name" name="first_name" required />
+              <Field label="Last Name"  name="last_name"  required />
+              <Field label="Email"      name="email"      type="email" required={!isEdit} />
+              <Field label="Phone"      name="phone"      type="tel" />
               {!isEdit && (
                 <Field label="Initial Password" name="password" placeholder="Default: school@2024" />
               )}
             </div>
 
-            {/* Professional section */}
             <div className="form-section-label mt-2">Professional Details</div>
             <div className="row">
               <Field label="Staff Number"       name="staff_number"       required />
@@ -472,7 +283,7 @@ export function TeacherForm() {
 
             <div className="d-flex gap-2 mt-2">
               <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
-                {loading && <span className="spinner-border spinner-border-sm me-2" />}
+                {loading && <span className="spinner-border spinner-border-sm" />}
                 {isEdit ? "Update Teacher" : "Add Teacher"}
               </button>
               <button
@@ -494,7 +305,9 @@ export function TeacherForm() {
 /* ── SubjectAllocation ───────────────────────────────────────────────── */
 export function SubjectAllocation() {
   const [msg,  setMsg]  = useState({ type: "", text: "" });
-  const [form, setForm] = useState({ teacher: "", subject: "", classroom: "", academic_year: "" });
+  const [form, setForm] = useState({
+    teacher: "", subject: "", classroom: "", academic_year: "",
+  });
 
   const { data: teachers  } = useFetch(() => getTeachers());
   const { data: subjects   } = useFetch(() => getSubjects());
@@ -558,8 +371,6 @@ export function SubjectAllocation() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
-
       <PageTitle
         title="Subject Allocation"
         breadcrumbs={[{ label: "Teachers" }, { label: "Subject Allocation" }]}
@@ -598,7 +409,7 @@ export function SubjectAllocation() {
               <div>
                 <label className="form-label" style={{ visibility: "hidden" }}>Go</label>
                 <button type="submit" className="btn btn-primary btn-sm w-100">
-                  <i className="bi bi-plus-circle me-1" /> Assign
+                  <i className="bi bi-plus-circle" /> Assign
                 </button>
               </div>
             </div>

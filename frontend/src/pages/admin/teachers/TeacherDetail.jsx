@@ -17,92 +17,113 @@ export default function TeacherDetail() {
     <>
       <PageTitle
         title="Teacher Profile"
-        breadcrumbs={[{ label: "Teachers", to: "/admin/teachers" }, { label: teacher.full_name }]}
+        breadcrumbs={[
+          { label: "Teachers", to: "/admin/teachers" },
+          { label: teacher.full_name },
+        ]}
       />
 
-      <div className="row">
+      <div className="row g-4">
+        {/* Left Column — Profile Card */}
         <div className="col-xl-4">
-          <div className="card profile">
-            <div className="card-body profile-card pt-4 d-flex flex-column align-items-center text-center">
-              <div
-                style={{
-                  width: 80, height: 80, borderRadius: "50%",
-                  background: "linear-gradient(135deg,#4154f1,#012970)",
-                  color: "#fff", display: "flex", alignItems: "center",
-                  justifyContent: "center", fontSize: 30, fontWeight: 700, marginBottom: 12,
-                }}
-              >
-                {(teacher.full_name || "T").charAt(0)}
-              </div>
-              <h2>{teacher.full_name}</h2>
-              <h3 style={{ fontSize: 14, color: "#899bbd" }}>{teacher.email}</h3>
-              <div className="d-flex gap-2 mt-2 flex-wrap justify-content-center">
-                <span className={`badge bg-${teacher.is_active ? "success" : "secondary"}`}>
-                  {teacher.is_active ? "Active" : "Inactive"}
-                </span>
-                {teacher.department && <span className="badge bg-info">{teacher.department}</span>}
-              </div>
-              <div className="mt-3 d-flex gap-2">
-                <Link to={`/admin/teachers/${id}/edit`} className="btn btn-sm btn-primary">
-                  <i className="bi bi-pencil me-1" />Edit
-                </Link>
-              </div>
+          <div className="profile-card-modern">
+            <div className="profile-avatar">
+              {(teacher.full_name || "T").charAt(0).toUpperCase()}
+            </div>
+            <h2 className="profile-name">{teacher.full_name}</h2>
+            <div className="profile-adm">{teacher.email}</div>
+
+            <div className="profile-badges">
+              <span className={`status-chip status-chip--${teacher.is_active ? "active" : "inactive"}`}>
+                <i className={`bi bi-${teacher.is_active ? "check-circle-fill" : "dash-circle"}`} />
+                {teacher.is_active ? "Active" : "Inactive"}
+              </span>
+              {teacher.department && (
+                <span className="badge-modern badge-gender">{teacher.department}</span>
+              )}
+            </div>
+
+            <div className="profile-actions">
+              <Link to={`/admin/teachers/${id}/edit`} className="btn btn-primary btn-sm">
+                <i className="bi bi-pencil" /> Edit
+              </Link>
+              <Link to="/admin/teachers" className="btn btn-outline-secondary btn-sm">
+                <i className="bi bi-arrow-left" /> Back
+              </Link>
             </div>
           </div>
         </div>
 
+        {/* Right Column — Details */}
         <div className="col-xl-8">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title">Professional Details</h5>
-              <div className="row profile-overview">
+
+          {/* Professional Details */}
+          <div className="info-card-modern mb-4">
+            <div className="info-header">
+              <h5 className="info-title">
+                <i className="bi bi-person-badge me-2" style={{ color: "var(--primary)" }} />
+                Professional Details
+              </h5>
+            </div>
+            <div className="tab-content-custom">
+              <div className="info-grid">
                 {[
-                  { label: "Staff Number", value: teacher.staff_number || "—" },
-                  { label: "TSC Number", value: teacher.tsc_number || "—" },
-                  { label: "Department", value: teacher.department || "—" },
-                  { label: "Qualification", value: teacher.qualification || "—" },
-                  { label: "Joined School", value: formatDate(teacher.date_joined_school) },
-                  { label: "Total Allocations", value: teacher.allocation_count },
+                  { label: "Staff Number",      value: teacher.staff_number       || "—" },
+                  { label: "TSC Number",         value: teacher.tsc_number         || "—" },
+                  { label: "Department",         value: teacher.department         || "—" },
+                  { label: "Qualification",      value: teacher.qualification      || "—" },
+                  { label: "Joined School",      value: formatDate(teacher.date_joined_school) || "—" },
+                  { label: "Total Allocations",  value: teacher.allocation_count   ?? 0 },
                 ].map((row) => (
-                  <div className="col-md-6" key={row.label}>
-                    <div className="row mb-2">
-                      <div className="col-5 label">{row.label}</div>
-                      <div className="col-7">{row.value}</div>
-                    </div>
+                  <div className="info-item" key={row.label}>
+                    <div className="info-label">{row.label}</div>
+                    <div className="info-value">{row.value}</div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title">
+          {/* Subject Allocations */}
+          <div className="info-card-modern">
+            <div className="info-header" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <h5 className="info-title" style={{ flex: 1 }}>
+                <i className="bi bi-book me-2" style={{ color: "var(--primary)" }} />
                 Subject Allocations
-                <span className="badge bg-primary ms-2">{allocations?.length || 0}</span>
               </h5>
+              <span className="count-chip">{allocations?.length || 0}</span>
+            </div>
+            <div className="card-body p-0">
               {allocations?.length ? (
                 <div className="table-responsive">
-                  <table className="table table-hover table-bordered align-middle">
-                    <thead className="table-light">
-                      <tr><th>Subject</th><th>Classroom</th><th>Year</th></tr>
+                  <table className="alloc-table">
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        <th>Classroom</th>
+                        <th>Year</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {allocations.map((a) => (
                         <tr key={a.id}>
-                          <td className="fw-600">{a.subject_name}</td>
-                          <td>{a.classroom_display}</td>
-                          <td>{a.academic_year_display}</td>
+                          <td className="alloc-subject fw-600">{a.subject_name}</td>
+                          <td className="alloc-class">{a.classroom_display}</td>
+                          <td className="alloc-class">{a.academic_year_display}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <p className="text-muted">No allocations yet.</p>
+                <div className="empty-message">
+                  <i className="bi bi-book fs-1 d-block mb-2" />
+                  <p>No subject allocations yet.</p>
+                </div>
               )}
             </div>
           </div>
+
         </div>
       </div>
     </>

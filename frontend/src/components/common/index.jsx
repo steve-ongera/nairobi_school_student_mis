@@ -132,21 +132,16 @@ export function DataTable({ columns, data, loading, emptyMessage }) {
   );
 }
 
-// ── SearchBar ─────────────────────────────────────────────────────────────────
 export function SearchBar({ value, onChange, placeholder = "Search…" }) {
   return (
-    <div className="input-group mb-3" style={{ maxWidth: 320 }}>
-      <span className="input-group-text bg-white">
-        <i className="bi bi-search text-muted" />
-      </span>
-      <input
-        type="text"
-        className="form-control"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
+    <input
+      type="text"
+      className="form-control"
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ maxWidth: 260 }}
+    />
   );
 }
 

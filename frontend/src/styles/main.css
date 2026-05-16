@@ -109,8 +109,7 @@ a:hover { color: var(--primary-dark); }
 }
 
 /* ============================================================
-   HEADER — 3-zone CSS grid (no Bootstrap flex helpers)
-   [ left: logo+toggle ] [ centre: search ] [ right: actions ]
+   HEADER
    ============================================================ */
 .header {
   position: fixed;
@@ -121,20 +120,17 @@ a:hover { color: var(--primary-dark); }
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-light);
   padding: 0 24px;
-
-  /* ✅ Grid: left zone fixed, centre grows, right zone fixed */
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 16px;
 }
 
-/* ── Left zone ── */
+/* Left zone */
 .header-left {
   display: flex;
   align-items: center;
   gap: 8px;
-  /* never shrinks or grows — stays exactly as wide as its content */
 }
 
 .logo {
@@ -186,12 +182,11 @@ a:hover { color: var(--primary-dark); }
   background: var(--primary-light);
 }
 
-/* ── Centre zone: search ── */
+/* Centre zone: search */
 .header-search {
-  /* Takes all remaining width in the grid centre column */
   width: 100%;
   max-width: 480px;
-  justify-self: start; /* left-align within the stretchy column */
+  justify-self: start;
 }
 
 .header-search .search-form {
@@ -232,10 +227,8 @@ a:hover { color: var(--primary-dark); }
 }
 .header-search .search-form button:hover { color: var(--primary); }
 
-/* On small screens the search bar drops below the header as a drawer */
 @media (max-width: 1199px) {
   .header-search {
-    /* Remove from grid flow, float it below the header */
     position: fixed;
     top: var(--header-height);
     left: 0;
@@ -246,13 +239,10 @@ a:hover { color: var(--primary-dark); }
     border-bottom: 1px solid var(--border);
     box-shadow: var(--shadow-lg);
     z-index: 999;
-
-    /* Hidden by default */
     visibility: hidden;
     opacity: 0;
     transform: translateY(-8px);
     transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
-    /* Keep it in the grid so layout doesn't shift — just invisible */
     grid-column: 2;
   }
 
@@ -263,15 +253,13 @@ a:hover { color: var(--primary-dark); }
   }
 }
 
-/* ── Right zone: action icons ── */
+/* Right zone: action icons */
 .header-actions {
   display: flex;
   align-items: center;
   gap: 4px;
-  /* never grows — always hugs the right edge */
 }
 
-/* Icon button base */
 .header-icon-btn {
   position: relative;
   display: flex;
@@ -307,7 +295,6 @@ a:hover { color: var(--primary-dark); }
   line-height: 1.4;
 }
 
-/* Profile button */
 .nav-profile {
   display: flex;
   align-items: center;
@@ -456,7 +443,6 @@ a:hover { color: var(--primary-dark); }
 .sidebar::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 4px; }
 .sidebar::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* Sidebar nav */
 .sidebar-nav {
   padding: 0;
   margin: 0;
@@ -495,13 +481,6 @@ a:hover { color: var(--primary-dark); }
   transition: color var(--transition-fast);
 }
 
-.sidebar-nav .nav-link:not(.collapsed),
-.sidebar-nav .nav-link:not(.collapsed) i {
-  background: linear-gradient(135deg, var(--primary-light) 0%, rgba(37,99,235,0.08) 100%);
-  color: var(--primary);
-}
-
-/* Only apply background to the link, not the icon element separately */
 .sidebar-nav .nav-link:not(.collapsed) { color: var(--primary); }
 .sidebar-nav .nav-link:not(.collapsed) i { color: var(--primary); background: none; }
 
@@ -521,7 +500,6 @@ a:hover { color: var(--primary-dark); }
   transform: rotate(180deg);
 }
 
-/* Sub-menu — no browser bullets */
 .sidebar-nav .nav-content {
   list-style: none;
   padding: 4px 0 4px 48px;
@@ -623,6 +601,22 @@ a:hover { color: var(--primary-dark); }
   font-weight: 500;
   font-family: 'Inter', sans-serif;
   transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Fix: btn-sm keeps consistent height and doesn't break flex layout */
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 8px;
+  gap: 5px;
 }
 
 .btn-primary {
@@ -634,6 +628,10 @@ a:hover { color: var(--primary-dark); }
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
   background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-hover) 100%);
+  color: white;
+}
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-outline-primary {
@@ -644,7 +642,505 @@ a:hover { color: var(--primary-dark); }
 .btn-outline-primary:hover {
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   border-color: transparent;
+  color: white;
   transform: translateY(-1px);
+}
+
+.btn-outline-secondary {
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  background: transparent;
+}
+.btn-outline-secondary:hover {
+  background: var(--border-light);
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   FORM CONTROLS (global)
+   ============================================================ */
+.form-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.form-control,
+.form-select {
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  font-size: 14px;
+  padding: 9px 12px;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  width: 100%;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  outline: none;
+}
+
+.form-control::placeholder { color: var(--text-muted); }
+
+.form-select-sm,
+.form-control-sm {
+  padding: 7px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+/* Form section label (used in TeacherForm) */
+.form-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+  display: block;
+}
+
+/* ============================================================
+   TABLE TOOLBAR (shared: TeacherList, StudentList, etc.)
+   ============================================================ */
+.tbl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tbl-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;   /* keep search + button on the same line always */
+  flex-shrink: 0;      /* don't let this group shrink and squeeze the button out */
+}
+
+/* Constrain search so it doesn't push the button off-screen */
+.tbl-toolbar__right .search-bar,
+.tbl-toolbar__right input[type="search"],
+.tbl-toolbar__right input[type="text"] {
+  min-width: 180px;
+  max-width: 260px;
+  width: 100%;
+}
+
+@media (max-width: 576px) {
+  .tbl-toolbar { flex-direction: column; align-items: flex-start; }
+  .tbl-toolbar__right { width: 100%; flex-wrap: wrap; }
+  .tbl-toolbar__right .search-bar,
+  .tbl-toolbar__right input[type="search"],
+  .tbl-toolbar__right input[type="text"] { max-width: 100%; }
+  .tbl-toolbar__right .btn { flex: 1; justify-content: center; }
+}
+
+/* ============================================================
+   TABLE ACTION BUTTONS (shared)
+   ============================================================ */
+.tbl-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tbl-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.tbl-btn--view { background: #eff6ff; color: var(--primary); }
+.tbl-btn--edit { background: #fef3c7; color: #b45309; }
+.tbl-btn--del  { background: #fef2f2; color: var(--danger); }
+
+.tbl-btn--view:hover { background: var(--primary); color: white; }
+.tbl-btn--edit:hover { background: var(--warning);  color: white; }
+.tbl-btn--del:hover  { background: var(--danger);   color: white; }
+
+/* ============================================================
+   STATUS / COUNT CHIPS & PILLS (shared)
+   ============================================================ */
+
+/* Status chip — used in TeacherList */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-chip--active   { background: #ecfdf5; color: #065f46; }
+.status-chip--inactive { background: #f1f5f9; color: var(--text-muted); }
+
+/* Count chip — used in TeacherList (subjects column) */
+.count-chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+/* Gender / boarding pills — used in StudentList */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pill--male      { background: #eff6ff; color: var(--primary); }
+.pill--female    { background: #fdf2f8; color: #db2777; }
+.pill--boarding  { background: #fef3c7; color: #b45309; }
+.pill--day       { background: #cffafe; color: #0e7490; }
+
+/* ============================================================
+   PERSON CELLS (Teacher & Student name+avatar cells)
+   ============================================================ */
+
+/* Shared avatar base */
+.teacher-avatar,
+.student-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.teacher-avatar {
+  background: linear-gradient(135deg, var(--accent), #818cf8);
+}
+
+.student-avatar {
+  background: linear-gradient(135deg, var(--primary), #3b82f6);
+}
+
+.teacher-cell,
+.student-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.teacher-cell__name,
+.student-cell__name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.teacher-cell__sub,
+.student-cell__sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* Admission number link */
+.adm-link {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.03em;
+}
+.adm-link:hover { text-decoration: underline; }
+
+/* ============================================================
+   ALLOCATION TABLE (SubjectAllocation)
+   ============================================================ */
+.alloc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.alloc-table thead th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.alloc-table tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: middle;
+  color: var(--text-secondary);
+}
+
+.alloc-table tbody tr:last-child td { border-bottom: none; }
+.alloc-table tbody tr:hover { background: #fafbfc; }
+
+.alloc-teacher { font-weight: 600; color: var(--text-primary); }
+.alloc-subject  { color: var(--text-primary); }
+.alloc-class    { font-size: 12px; color: var(--text-muted); }
+
+/* Allocation form grid */
+.alloc-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+@media (max-width: 992px) {
+  .alloc-form-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 576px) {
+  .alloc-form-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   STUDENT DETAIL — Profile & Info Cards
+   ============================================================ */
+.profile-card-modern {
+  background: var(--bg-card);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  padding: 32px 24px;
+  text-align: center;
+  transition: all var(--transition-base);
+}
+
+.profile-card-modern:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.profile-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 700;
+  margin: 0 auto 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.profile-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.profile-adm {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-family: monospace;
+  margin-bottom: 16px;
+}
+
+.profile-badges {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.badge-modern {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-boarding { background: #fef3c7; color: var(--warning); }
+.badge-day      { background: #cffafe; color: var(--info); }
+.badge-gender   { background: #eff6ff; color: var(--primary); }
+
+.profile-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Fee summary card */
+.fee-card {
+  background: var(--bg-card);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.fee-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.fee-row:last-child { border-bottom: none; }
+
+.fee-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.fee-value {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.fee-value.primary { color: var(--primary); }
+.fee-value.success { color: var(--success); }
+.fee-value.danger  { color: var(--danger); }
+
+/* Info card */
+.info-card-modern {
+  background: var(--bg-card);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.info-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  background: #fafbfc;
+}
+
+.info-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Custom tabs */
+.nav-tabs-custom {
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  margin-top: 16px;
+  display: flex;
+  gap: 4px;
+  list-style: none;
+}
+
+.nav-tabs-custom .nav-link {
+  border: none;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.nav-tabs-custom .nav-link:hover { color: var(--primary); }
+
+.nav-tabs-custom .nav-link.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* Tab content */
+.tab-content-custom { padding: 24px; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.info-item {
+  display: flex;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.info-label {
+  width: 140px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.empty-message {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .info-grid { grid-template-columns: 1fr; gap: 8px; }
+  .info-item { flex-direction: column; gap: 4px; }
+  .info-label { width: 100%; }
+  .nav-tabs-custom .nav-link { padding: 8px 12px; font-size: 13px; }
+  .tab-content-custom { padding: 16px; }
 }
 
 /* ============================================================
@@ -781,4 +1277,5 @@ a:hover { color: var(--primary-dark); }
   #main      { padding: 16px 20px; }
   .header    { padding: 0 16px; gap: 10px; }
   .card-body { padding: 16px; }
+  .profile-card-modern { padding: 24px 16px; }
 }
