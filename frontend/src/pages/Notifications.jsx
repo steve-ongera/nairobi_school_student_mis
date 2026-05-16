@@ -1,7 +1,7 @@
-import { getMyNotifications } from "../../utils/api";
-import { useFetch } from "../../hooks";
-import { formatDateTime } from "../../utils/formatters";
-import { PageTitle, LoadingSpinner, AlertMessage, EmptyState } from "../../components/common";
+import { getMyNotifications } from "../utils/api";
+import { useFetch } from "../hooks";
+import { formatDateTime } from "../utils/formatters";
+import { PageTitle, LoadingSpinner, AlertMessage, EmptyState } from "../components/common";
 
 const TYPE_ICONS = {
   sms: "bi-chat-dots",
