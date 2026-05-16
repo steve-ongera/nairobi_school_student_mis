@@ -1448,12 +1448,42 @@ class StreamReportView(APIView):
     """
     permission_classes = [IsAuthenticated, IsAdminOrTeacher]
 
+    def _sanitize_summary(self, summary):
+        """
+        compute_student_exam_summary() may return raw QuerySets or Decimal
+        values inside the dict. Convert everything to JSON-safe primitives
+        before passing to Response().
+        """
+        if not summary:
+            return {}
+
+        sanitized = {}
+        for key, value in summary.items():
+            # Raw QuerySet → serialize with ExamResultSerializer
+            if hasattr(value, "query"):
+                sanitized[key] = ExamResultSerializer(
+                    value.select_related("subject"), many=True
+                ).data
+            # Decimal → float
+            elif hasattr(value, "quantize"):
+                sanitized[key] = float(value)
+            # Nested dict → recurse
+            elif isinstance(value, dict):
+                sanitized[key] = self._sanitize_summary(value)
+            # Everything else (str, int, float, None) → pass through
+            else:
+                sanitized[key] = value
+
+        return sanitized
+
     def get(self, request, classroom_id, exam_id):
         try:
             classroom = Classroom.objects.get(pk=classroom_id)
             exam = Exam.objects.get(pk=exam_id)
         except (Classroom.DoesNotExist, Exam.DoesNotExist):
-            return Response({"detail": "Classroom or exam not found."}, status=404)
+            return Response(
+                {"detail": "Classroom or exam not found."}, status=404
+            )
 
         students = Student.objects.filter(
             current_classroom=classroom, status=Student.Status.ACTIVE
@@ -1466,17 +1496,19 @@ class StreamReportView(APIView):
             results = ExamResult.objects.filter(
                 student=student, exam=exam
             ).select_related("subject")
-            summary = compute_student_exam_summary(student, exam)
+
+            raw_summary = compute_student_exam_summary(student, exam)
+            summary = self._sanitize_summary(raw_summary)
             student_ranking = rankings.get(student.pk, {})
 
             report_data.append({
                 "student": StudentListSerializer(student).data,
                 "results": ExamResultSerializer(results, many=True).data,
-                "summary": summary if summary else {},
+                "summary": summary,
                 "ranking": student_ranking,
             })
 
-        # Sort by stream position
+        # Sort by stream position ascending
         report_data.sort(
             key=lambda x: x["ranking"].get("stream_position", 9999)
         )
@@ -1486,4 +1518,3 @@ class StreamReportView(APIView):
             "exam": ExamSerializer(exam).data,
             "students": report_data,
         })
-        

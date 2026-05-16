@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { getClassrooms, getClassroomStudents, submitBulkAttendance } from "../../../utils/api";
 import { PageTitle, AlertMessage, LoadingSpinner } from "../../../components/common";
 
+// Helper: unwrap DRF paginated or plain array responses
+const unwrap = (res) => res?.data?.results ?? res?.data ?? [];
+
 const STATUSES = [
   { value: "present", label: "Present", color: "success" },
   { value: "absent", label: "Absent", color: "danger" },
@@ -17,33 +20,50 @@ export default function TakeAttendance() {
   const [attendance, setAttendance] = useState({});
   const [loading, setLoading] = useState(false);
   const [studentsLoading, setStudentsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState("");
   const [msg, setMsg] = useState({ type: "", text: "" });
 
+  // Load classrooms on mount
   useEffect(() => {
-    getClassrooms().then((r) => setClassrooms(r.data)).catch(() => {});
+    getClassrooms()
+      .then((r) => setClassrooms(unwrap(r)))
+      .catch(() => setFetchError("Failed to load classrooms. Please refresh."));
   }, []);
 
+  // Load students when classroom changes
   useEffect(() => {
-    if (!selectedClass) { setStudents([]); return; }
+    if (!selectedClass) {
+      setStudents([]);
+      setAttendance({});
+      return;
+    }
     setStudentsLoading(true);
     getClassroomStudents(selectedClass)
       .then((r) => {
-        setStudents(r.data);
+        const list = unwrap(r);
+        setStudents(list);
         const init = {};
-        r.data.forEach((s) => { init[s.id] = { status: "present", remarks: "" }; });
+        list.forEach((s) => {
+          init[s.id] = { status: "present", remarks: "" };
+        });
         setAttendance(init);
       })
-      .catch(() => {})
+      .catch(() => setMsg({ type: "danger", text: "Failed to load students." }))
       .finally(() => setStudentsLoading(false));
   }, [selectedClass]);
 
   const setStatus = (studentId, field, value) => {
-    setAttendance((a) => ({ ...a, [studentId]: { ...a[studentId], [field]: value } }));
+    setAttendance((a) => ({
+      ...a,
+      [studentId]: { ...a[studentId], [field]: value },
+    }));
   };
 
   const markAll = (status) => {
     const updated = {};
-    students.forEach((s) => { updated[s.id] = { status, remarks: "" }; });
+    students.forEach((s) => {
+      updated[s.id] = { status, remarks: "" };
+    });
     setAttendance(updated);
   };
 
@@ -68,7 +88,10 @@ export default function TakeAttendance() {
         text: `Attendance saved: ${data.created} new, ${data.updated} updated.`,
       });
     } catch (err) {
-      setMsg({ type: "danger", text: err.response?.data?.detail || "Failed to save attendance." });
+      setMsg({
+        type: "danger",
+        text: err.response?.data?.detail || "Failed to save attendance.",
+      });
     } finally {
       setLoading(false);
     }
@@ -82,9 +105,17 @@ export default function TakeAttendance() {
 
   return (
     <>
-      <PageTitle title="Take Attendance" breadcrumbs={[{ label: "Attendance" }]} />
+      <PageTitle
+        title="Take Attendance"
+        breadcrumbs={[{ label: "Attendance" }]}
+      />
 
-      <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg({ type: "", text: "" })} />
+      {fetchError && <AlertMessage type="danger" message={fetchError} />}
+      <AlertMessage
+        type={msg.type}
+        message={msg.text}
+        onClose={() => setMsg({ type: "", text: "" })}
+      />
 
       <div className="card">
         <div className="card-body">
@@ -111,6 +142,7 @@ export default function TakeAttendance() {
                 type="date"
                 className="form-control"
                 value={date}
+                max={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setDate(e.target.value)}
               />
             </div>
@@ -118,11 +150,25 @@ export default function TakeAttendance() {
 
           {studentsLoading && <LoadingSpinner message="Loading students…" />}
 
+          {!studentsLoading && !selectedClass && (
+            <div className="text-center text-muted py-4">
+              <i className="bi bi-people" style={{ fontSize: 36 }} />
+              <p className="mt-2 mb-0">Select a classroom above to begin.</p>
+            </div>
+          )}
+
+          {!studentsLoading && selectedClass && students.length === 0 && (
+            <div className="text-center text-muted py-4">
+              <i className="bi bi-person-x" style={{ fontSize: 36 }} />
+              <p className="mt-2 mb-0">No students found in this classroom.</p>
+            </div>
+          )}
+
           {!studentsLoading && students.length > 0 && (
             <form onSubmit={handleSubmit}>
               {/* Quick mark all */}
-              <div className="d-flex gap-2 mb-3 flex-wrap">
-                <span className="text-muted align-self-center me-1 small">Mark all:</span>
+              <div className="d-flex gap-2 mb-3 flex-wrap align-items-center">
+                <span className="text-muted small me-1">Mark all:</span>
                 {STATUSES.map((s) => (
                   <button
                     key={s.value}
@@ -138,7 +184,10 @@ export default function TakeAttendance() {
               {/* Count badges */}
               <div className="d-flex gap-2 mb-3 flex-wrap">
                 {STATUSES.map((s) => (
-                  <span key={s.value} className={`badge bg-${s.color} px-3 py-2`}>
+                  <span
+                    key={s.value}
+                    className={`badge bg-${s.color} px-3 py-2`}
+                  >
                     {counts[s.value] || 0} {s.label}
                   </span>
                 ))}
@@ -167,16 +216,18 @@ export default function TakeAttendance() {
                                 ? "#fff5f5"
                                 : status === "late"
                                 ? "#fffdf0"
+                                : status === "sick"
+                                ? "#f0f9ff"
                                 : "transparent",
                           }}
                         >
-                          <td>{i + 1}</td>
+                          <td className="text-muted">{i + 1}</td>
                           <td>
                             <code>{s.admission_number}</code>
                           </td>
                           <td className="fw-600">{s.full_name}</td>
                           <td>
-                            <div className="d-flex gap-1">
+                            <div className="d-flex gap-1 flex-wrap">
                               {STATUSES.map((st) => (
                                 <button
                                   key={st.value}
@@ -186,7 +237,9 @@ export default function TakeAttendance() {
                                       ? `btn-${st.color}`
                                       : `btn-outline-${st.color}`
                                   }`}
-                                  onClick={() => setStatus(s.id, "status", st.value)}
+                                  onClick={() =>
+                                    setStatus(s.id, "status", st.value)
+                                  }
                                   style={{ fontSize: 11, padding: "2px 8px" }}
                                 >
                                   {st.label}
@@ -200,7 +253,9 @@ export default function TakeAttendance() {
                               className="form-control form-control-sm"
                               placeholder="Optional"
                               value={attendance[s.id]?.remarks || ""}
-                              onChange={(e) => setStatus(s.id, "remarks", e.target.value)}
+                              onChange={(e) =>
+                                setStatus(s.id, "remarks", e.target.value)
+                              }
                             />
                           </td>
                         </tr>
@@ -210,7 +265,11 @@ export default function TakeAttendance() {
                 </table>
               </div>
 
-              <button type="submit" className="btn btn-primary mt-2" disabled={loading}>
+              <button
+                type="submit"
+                className="btn btn-primary mt-2"
+                disabled={loading}
+              >
                 {loading ? (
                   <>
                     <span className="spinner-border spinner-border-sm me-2" />
