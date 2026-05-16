@@ -1,144 +1,99 @@
-// pages/admin/students/StudentList.jsx
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { PageTitle } from "../../../components/common/PageTitle";
-import { DataTable, LoadingSpinner, AlertMessage, ConfirmDialog } from "../../../components/common/DataTable";
-import useFetch from "../../../hooks/useFetch";
-import { studentsAPI, academicsAPI } from "../../../utils/api";
-import { formatDate, statusColor } from "../../../utils/formatters";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { getStudents, deleteStudent } from "../../../utils/api";
+import { useFetch } from "../../../hooks";
+import { formatDate } from "../../../utils/formatters";
+import {
+  PageTitle, DataTable, SearchBar, StatusBadge, AlertMessage, ConfirmDialog,
+} from "../../../components/common";
 
 export default function StudentList() {
-  const navigate = useNavigate();
-  const [filters, setFilters] = useState({ status: "", form: "", search: "" });
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [msg, setMsg] = useState(null);
+  const [search, setSearch] = useState("");
+  const [deleteId, setDeleteId] = useState(null);
+  const [msg, setMsg] = useState({ type: "", text: "" });
 
-  const { data: formsData } = useFetch(() => academicsAPI.getForms(), []);
-  const { data, loading, error, refetch } = useFetch(
-    () => studentsAPI.getStudents({ status: filters.status, "current_classroom__stream__form": filters.form }),
-    [filters.status, filters.form]
+  const { data: students, loading, error, refetch } = useFetch(
+    () => getStudents(search ? { search } : {}),
+    [search]
   );
 
-  const students = data?.results || data || [];
-  const forms = formsData || [];
-
   const handleDelete = async () => {
+    if (!deleteId) return;
     try {
-      await studentsAPI.deleteStudent(deleteTarget.id);
-      setMsg({ type: "success", text: `Student ${deleteTarget.admission_number} deleted.` });
+      await deleteStudent(deleteId);
+      setMsg({ type: "success", text: "Student deleted." });
       refetch();
     } catch {
       setMsg({ type: "danger", text: "Failed to delete student." });
-    } finally {
-      setDeleteTarget(null);
     }
   };
 
   const columns = [
-    { key: "admission_number", label: "Adm No" },
-    { key: "full_name", label: "Full Name", render: (v, row) => (
-      <Link to={`/admin/students/${row.id}`} className="fw-semibold text-primary">{v}</Link>
+    { header: "Adm No", key: "admission_number", render: (s) =>
+      <Link to={`/admin/students/${s.id}`} className="fw-600">{s.admission_number}</Link> },
+    { header: "Name", key: "full_name" },
+    { header: "Class", key: "current_classroom_display" },
+    { header: "Gender", key: "gender", render: (s) => s.gender?.charAt(0).toUpperCase() + s.gender?.slice(1) },
+    { header: "Boarding", key: "boarding_status", render: (s) =>
+      <span className="badge bg-info">{s.boarding_status}</span> },
+    { header: "Status", key: "status", render: (s) => <StatusBadge status={s.status} /> },
+    { header: "Admitted", key: "admission_date", render: (s) => formatDate(s.admission_date) },
+    { header: "Actions", render: (s) => (
+      <div className="d-flex gap-1">
+        <Link to={`/admin/students/${s.id}`} className="btn btn-sm btn-outline-primary">
+          <i className="bi bi-eye" />
+        </Link>
+        <Link to={`/admin/students/${s.id}/edit`} className="btn btn-sm btn-outline-secondary">
+          <i className="bi bi-pencil" />
+        </Link>
+        <button
+          className="btn btn-sm btn-outline-danger"
+          onClick={() => setDeleteId(s.id)}
+          data-bs-toggle="modal"
+          data-bs-target="#confirmDelete"
+        >
+          <i className="bi bi-trash" />
+        </button>
+      </div>
     )},
-    { key: "email", label: "Email", render: (v) => <small className="text-muted">{v}</small> },
-    { key: "current_classroom_display", label: "Class" },
-    { key: "gender", label: "Gender", render: (v) => v === "M" ? "Male" : v === "F" ? "Female" : "—" },
-    { key: "boarding_status", label: "Type", render: (v) => (
-      <span className={`badge ${v === "boarder" ? "bg-primary" : "bg-secondary"}`}>
-        {v === "boarder" ? "Boarder" : "Day"}
-      </span>
-    )},
-    { key: "status", label: "Status", render: (v) => (
-      <span className={`badge bg-${statusColor(v)}`}>{v}</span>
-    )},
-    { key: "admission_date", label: "Admitted", render: (v) => formatDate(v) },
   ];
 
   return (
-    <section>
+    <>
       <PageTitle title="Students" breadcrumbs={[{ label: "Students" }]} />
 
-      {msg && <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg(null)} />}
+      <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg({ type: "", text: "" })} />
 
-      {/* Filters + Add button */}
       <div className="card">
         <div className="card-body">
-          <div className="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
-            <div className="d-flex flex-wrap gap-2 align-items-end">
-              <div>
-                <label className="form-label small text-muted mb-1">Status</label>
-                <select
-                  className="form-select form-select-sm"
-                  value={filters.status}
-                  onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-                >
-                  <option value="">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="transferred">Transferred</option>
-                  <option value="completed">Completed</option>
-                  <option value="withdrawn">Withdrawn</option>
-                  <option value="suspended">Suspended</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label small text-muted mb-1">Form</label>
-                <select
-                  className="form-select form-select-sm"
-                  value={filters.form}
-                  onChange={(e) => setFilters((f) => ({ ...f, form: e.target.value }))}
-                >
-                  <option value="">All Forms</option>
-                  {forms.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                </select>
-              </div>
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => setFilters({ status: "", form: "" })}>
-                <i className="bi bi-x-circle me-1" />Clear
-              </button>
-            </div>
-            <div className="d-flex gap-2">
-              <Link to="/admin/students/import" className="btn btn-sm btn-outline-success">
-                <i className="bi bi-file-earmark-excel me-1" />Import Excel
-              </Link>
-              <Link to="/admin/students/new" className="btn btn-sm btn-primary">
-                <i className="bi bi-person-plus me-1" />Admit Student
+          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h5 className="card-title mb-0">All Students</h5>
+            <div className="d-flex gap-2 align-items-center">
+              <SearchBar value={search} onChange={setSearch} placeholder="Search by name or adm no…" />
+              <Link to="/admin/students/new" className="btn btn-primary">
+                <i className="bi bi-person-plus me-1" /> Admit Student
               </Link>
             </div>
           </div>
 
-          {loading && <LoadingSpinner />}
           {error && <AlertMessage type="danger" message={error} />}
-          {!loading && !error && (
-            <DataTable
-              columns={columns}
-              data={students}
-              actions={(row) => (
-                <div className="d-flex gap-1">
-                  <button className="btn btn-xs btn-outline-primary btn-sm" style={{ fontSize: 11 }}
-                    onClick={() => navigate(`/admin/students/${row.id}`)}>
-                    <i className="bi bi-eye" />
-                  </button>
-                  <button className="btn btn-xs btn-outline-secondary btn-sm" style={{ fontSize: 11 }}
-                    onClick={() => navigate(`/admin/students/${row.id}/edit`)}>
-                    <i className="bi bi-pencil" />
-                  </button>
-                  <button className="btn btn-xs btn-outline-danger btn-sm" style={{ fontSize: 11 }}
-                    onClick={() => setDeleteTarget(row)}>
-                    <i className="bi bi-trash" />
-                  </button>
-                </div>
-              )}
-            />
-          )}
+
+          <DataTable
+            columns={columns}
+            data={students}
+            loading={loading}
+            emptyMessage="No students found. Try a different search."
+          />
         </div>
       </div>
 
       <ConfirmDialog
-        show={!!deleteTarget}
+        id="confirmDelete"
         title="Delete Student"
-        message={`Are you sure you want to delete ${deleteTarget?.full_name} (${deleteTarget?.admission_number})? This action cannot be undone.`}
+        message="Are you sure you want to delete this student? This cannot be undone."
         onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
-        confirmLabel="Delete Student"
+        danger
       />
-    </section>
+    </>
   );
 }
