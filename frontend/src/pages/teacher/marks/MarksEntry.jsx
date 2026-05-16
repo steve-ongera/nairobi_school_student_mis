@@ -48,7 +48,6 @@ export default function MarksEntry() {
       .then((r) => {
         const list = unwrap(r);
         setStudents(list);
-        // Initialise marks map keyed by student id
         const initial = {};
         list.forEach((s) => {
           initial[s.id] = { marks: "", remarks: "" };
@@ -63,7 +62,6 @@ export default function MarksEntry() {
     setMarks((m) => ({ ...m, [studentId]: { ...m[studentId], [field]: value } }));
   };
 
-  // Fill all students with the same mark (quick-fill helper)
   const fillAll = (value) => {
     setMarks((m) => {
       const updated = { ...m };
@@ -125,26 +123,17 @@ export default function MarksEntry() {
     {
       label: "Exam",
       key: "exam",
-      options: exams.map((e) => ({
-        value: e.id,
-        label: `${e.name} – ${e.term_display}`,
-      })),
+      options: exams.map((e) => ({ value: e.id, label: `${e.name} – ${e.term_display}` })),
     },
     {
       label: "Subject",
       key: "subject",
-      options: subjects.map((s) => ({
-        value: s.id,
-        label: s.name,
-      })),
+      options: subjects.map((s) => ({ value: s.id, label: s.name })),
     },
     {
       label: "Classroom",
       key: "classroom",
-      options: classrooms.map((c) => ({
-        value: c.id,
-        label: `${c.stream_display} – ${c.academic_year_display}`,
-      })),
+      options: classrooms.map((c) => ({ value: c.id, label: `${c.stream_display} – ${c.academic_year_display}` })),
     },
   ];
 
@@ -163,7 +152,7 @@ export default function MarksEntry() {
       />
 
       {/* ── Selectors ── */}
-      <div className="card mb-3">
+      <div className="card">
         <div className="card-body">
           <h5 className="card-title">Select Exam, Subject & Class</h5>
           <div className="row g-3">
@@ -193,34 +182,52 @@ export default function MarksEntry() {
       {/* ── Marks Table ── */}
       <div className="card">
         <div className="card-body">
+
+          {/* Loading students */}
           {studentsLoading && <LoadingSpinner message="Loading students…" />}
 
-          {!studentsLoading && selected.classroom && students.length === 0 && (
-            <div className="text-center py-5 text-muted">
-              <i className="bi bi-people" style={{ fontSize: 36 }} />
-              <p className="mt-2 mb-0">No students found in this classroom.</p>
-            </div>
-          )}
-
+          {/* No classroom selected */}
           {!studentsLoading && !selected.classroom && (
-            <div className="text-center py-5 text-muted">
-              <i className="bi bi-arrow-up-circle" style={{ fontSize: 36 }} />
+            <div className="text-center text-muted py-5">
+              <i className="bi bi-pencil-square" style={{ fontSize: 36 }} />
               <p className="mt-2 mb-0">Select an exam, subject, and classroom above to begin.</p>
             </div>
           )}
 
+          {/* Classroom selected but no students */}
+          {!studentsLoading && selected.classroom && students.length === 0 && (
+            <div className="empty-message">
+              <i className="bi bi-people" style={{ fontSize: 36, display: "block", marginBottom: 8 }} />
+              No students found in this classroom.
+            </div>
+          )}
+
+          {/* ── Main entry form ── */}
           {!studentsLoading && students.length > 0 && (
             <form onSubmit={handleSubmit}>
-              {/* Quick-fill toolbar */}
-              <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                <h6 className="mb-0 fw-700">
-                  {students.length} Students &mdash;{" "}
-                  <span className="text-muted fw-400">
+
+              {/* Toolbar */}
+              <div className="tbl-toolbar">
+                <h5 className="card-title mb-0">
+                  {students.length} Students
+                  <span
+                    className="count-chip"
+                    style={{
+                      marginLeft: 10,
+                      fontSize: 13,
+                      background: filledCount === students.length ? "#e0f8e9" : "var(--primary-light)",
+                      color: filledCount === students.length ? "#2eca6a" : "var(--primary-dark)",
+                    }}
+                  >
                     {filledCount} / {students.length} filled
                   </span>
-                </h6>
-                <div className="d-flex gap-2 align-items-center">
-                  <span className="text-muted small">Quick fill:</span>
+                </h5>
+
+                {/* Quick-fill buttons */}
+                <div className="tbl-toolbar__right">
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
+                    Quick fill:
+                  </span>
                   {[0, 50, 100].map((v) => (
                     <button
                       key={v}
@@ -233,22 +240,24 @@ export default function MarksEntry() {
                   ))}
                   <button
                     type="button"
-                    className="btn btn-outline-danger btn-sm"
+                    className="btn btn-outline-secondary btn-sm"
+                    style={{ color: "var(--danger)", borderColor: "var(--danger)" }}
                     onClick={() => fillAll("")}
                   >
-                    Clear
+                    <i className="bi bi-x-circle" /> Clear
                   </button>
                 </div>
               </div>
 
+              {/* Table */}
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
                     <tr>
                       <th style={{ width: 40 }}>#</th>
-                      <th style={{ width: 110 }}>Adm No</th>
-                      <th>Student Name</th>
-                      <th style={{ width: 150 }}>Marks (0 – 100)</th>
+                      <th style={{ width: 120 }}>Adm No</th>
+                      <th>Student</th>
+                      <th style={{ width: 160 }}>Marks (0 – 100)</th>
                       <th>Remarks</th>
                     </tr>
                   </thead>
@@ -260,40 +269,53 @@ export default function MarksEntry() {
                         (isNaN(parseFloat(marksVal)) ||
                           parseFloat(marksVal) < 0 ||
                           parseFloat(marksVal) > 100);
+
                       return (
                         <tr key={s.id}>
-                          <td className="text-muted">{i + 1}</td>
+                          {/* Row number */}
+                          <td style={{ color: "var(--text-muted)", fontSize: 13 }}>{i + 1}</td>
+
+                          {/* Adm No — monospace, no label repetition */}
                           <td>
-                            <code>{s.admission_number}</code>
+                            <code className="adm-link" style={{ fontSize: 12 }}>
+                              {s.admission_number}
+                            </code>
                           </td>
-                          <td className="fw-600">{s.full_name}</td>
+
+                          {/* Student name with avatar initial */}
+                          <td>
+                            <div className="student-cell">
+                              <div className="student-avatar">
+                                {s.full_name?.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="student-cell__name fw-600">{s.full_name}</span>
+                            </div>
+                          </td>
+
+                          {/* Marks input */}
                           <td>
                             <input
                               type="number"
-                              className={`form-control form-control-sm ${
-                                isInvalid ? "is-invalid" : ""
-                              }`}
+                              className={`form-control form-control-sm ${isInvalid ? "is-invalid" : ""}`}
                               min={0}
                               max={100}
                               step={0.5}
                               value={marksVal}
-                              onChange={(e) =>
-                                setMark(s.id, "marks", e.target.value)
-                              }
+                              onChange={(e) => setMark(s.id, "marks", e.target.value)}
                               placeholder="0 – 100"
                             />
                             {isInvalid && (
                               <div className="invalid-feedback">0 – 100 only</div>
                             )}
                           </td>
+
+                          {/* Remarks input */}
                           <td>
                             <input
                               type="text"
                               className="form-control form-control-sm"
                               value={marks[s.id]?.remarks || ""}
-                              onChange={(e) =>
-                                setMark(s.id, "remarks", e.target.value)
-                              }
+                              onChange={(e) => setMark(s.id, "remarks", e.target.value)}
                               placeholder="Optional"
                             />
                           </td>
@@ -304,25 +326,27 @@ export default function MarksEntry() {
                 </table>
               </div>
 
+              {/* Submit */}
               <div className="d-flex gap-2 mt-3">
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={loading}
+                  disabled={loading || filledCount === 0}
                 >
                   {loading ? (
                     <>
-                      <span className="spinner-border spinner-border-sm me-2" />
+                      <span className="spinner-border spinner-border-sm" />
                       Saving…
                     </>
                   ) : (
                     <>
-                      <i className="bi bi-check2-circle me-2" />
+                      <i className="bi bi-check2-circle" />
                       Save {filledCount} Mark{filledCount !== 1 ? "s" : ""}
                     </>
                   )}
                 </button>
               </div>
+
             </form>
           )}
         </div>
