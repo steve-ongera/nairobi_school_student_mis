@@ -166,7 +166,7 @@ export default function Navbar() {
             ) : (
               <div className="avatar-initials">{getInitials()}</div>
             )}
-            <span className="profile-name">{user?.full_name?.split(" ")[0] || "User"}</span>
+           
             <i className="bi bi-chevron-down profile-chevron" />
           </span>
 
