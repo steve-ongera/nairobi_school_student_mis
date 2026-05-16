@@ -1518,3 +1518,15 @@ class StreamReportView(APIView):
             "exam": ExamSerializer(exam).data,
             "students": report_data,
         })
+        
+        
+        
+        
+@action(detail=False, methods=["get"])
+def archive(self, request):
+    """GET /api/students/archive/ – Students who are graduated or inactive."""
+    archived = Student.objects.filter(
+        status__in=["graduated", "inactive", "transferred"]
+    ).select_related("user", "current_classroom__stream__form")
+    serializer = StudentListSerializer(archived, many=True)
+    return Response(serializer.data)
