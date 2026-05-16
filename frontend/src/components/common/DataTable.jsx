@@ -1,6 +1,9 @@
 // components/common/DataTable.jsx
 import React, { useState } from "react";
 
+// Import LoadingSpinner from the same file or create a separate import
+// Since LoadingSpinner is defined in this file, we don't need to import it
+
 /**
  * Reusable data table with client-side search and pagination.
  *
@@ -25,10 +28,18 @@ export function DataTable({
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
 
-  const filtered = data.filter((row) => {
+  // Ensure data is an array
+  const safeData = Array.isArray(data) ? data : [];
+  
+  // Debug logging
+  console.log("DataTable - Data received:", safeData);
+  console.log("DataTable - Data length:", safeData.length);
+  console.log("DataTable - Columns:", columns);
+
+  const filtered = safeData.filter((row) => {
     if (!search) return true;
     return columns.some((col) => {
-      const val = row[col.key];
+      const val = col.key ? row[col.key] : null;
       return val && String(val).toLowerCase().includes(search.toLowerCase());
     });
   });
@@ -53,7 +64,9 @@ export function DataTable({
 
   const handleSearch = (e) => { setSearch(e.target.value); setPage(1); };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div>
@@ -81,13 +94,13 @@ export function DataTable({
         <table className="table table-hover mis-table">
           <thead>
             <tr>
-              {columns.map((col) => (
+              {columns.map((col, index) => (
                 <th
-                  key={col.key}
+                  key={col.key || index}
                   onClick={() => col.sortable !== false && handleSort(col.key)}
                   style={{ cursor: col.sortable !== false ? "pointer" : "default", userSelect: "none" }}
                 >
-                  {col.label}
+                  {col.header || col.label}
                   {col.sortable !== false && sortKey === col.key && (
                     <i className={`bi bi-caret-${sortDir === "asc" ? "up" : "down"}-fill ms-1`} style={{ fontSize: 10 }} />
                   )}
@@ -107,9 +120,9 @@ export function DataTable({
             ) : (
               paginated.map((row, i) => (
                 <tr key={row.id ?? i}>
-                  {columns.map((col) => (
-                    <td key={col.key}>
-                      {col.render ? col.render(row[col.key], row) : (row[col.key] ?? "—")}
+                  {columns.map((col, colIndex) => (
+                    <td key={col.key || colIndex}>
+                      {col.render ? col.render(row) : (row[col.key] ?? "—")}
                     </td>
                   ))}
                   {actions && <td>{actions(row)}</td>}
