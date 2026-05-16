@@ -1,7 +1,6 @@
-import { useContext } from "react";
+import { useContext, useState, useEffect, useCallback } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { ThemeContext } from "../context/ThemeContext";
-import { useState, useEffect } from "react";
 
 export function useAuth() {
   return useContext(AuthContext);
@@ -30,22 +29,30 @@ export function useFetch(fetchFn, deps = []) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetchFn();
-      setData(Array.isArray(res.data) ? res.data : res.data);
+      const payload = res.data;
+      // Unwrap DRF paginated responses: { count, next, previous, results: [...] }
+      setData(
+        Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.results)
+          ? payload.results
+          : payload
+      );
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to load data.");
     } finally {
       setLoading(false);
     }
-  };
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     refetch();
-  }, deps);
+  }, [refetch]);
 
   return { data, loading, error, refetch };
 }
