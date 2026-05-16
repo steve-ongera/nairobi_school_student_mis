@@ -18,6 +18,7 @@ import ExamForm from "./pages/admin/exams/ExamForm";
 import { ExamResults, GradingSettings } from "./pages/admin/exams/ExamSettings";
 import ReportCards from "./pages/admin/exams/ReportCards";
 import { TeacherList, TeacherForm, SubjectAllocation } from "./pages/admin/teachers/Teachers";
+import TeacherDetail from "./pages/admin/teachers/TeacherDetail";
 import { InvoiceList, PaymentList, FeeStructurePage, MpesaReconcile } from "./pages/admin/finance/Finance";
 import FinanceReports from "./pages/admin/finance/FinanceReports";
 import AttendanceList from "./pages/admin/attendance/AttendanceList";
@@ -44,6 +45,7 @@ import MyProfile from "./pages/student/profile/MyProfile";
 import ProfilePage from "./pages/profile/ProfilePage";
 import ChangePassword from "./pages/profile/ChangePassword";
 import NotFound from "./pages/NotFound";
+import Notifications from "./pages/Notifications";
 import Unauthorized from "./pages/Unauthorized";
 
 const ROLE_HOME = {
@@ -78,6 +80,7 @@ export default function App() {
         {/* Shared */}
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="/notifications" element={<Notifications />} />
 
         {/* Admin */}
         <Route path="/admin/dashboard" element={<RequireAuth allowedRoles={["admin"]}><AdminDashboard /></RequireAuth>} />
@@ -101,7 +104,7 @@ export default function App() {
         <Route path="/admin/teachers" element={<RequireAuth allowedRoles={["admin"]}><TeacherList /></RequireAuth>} />
         <Route path="/admin/teachers/new" element={<RequireAuth allowedRoles={["admin"]}><TeacherForm /></RequireAuth>} />
         <Route path="/admin/teachers/allocations" element={<RequireAuth allowedRoles={["admin"]}><SubjectAllocation /></RequireAuth>} />
-        <Route path="/admin/teachers/:id" element={<RequireAuth allowedRoles={["admin"]}><TeacherList /></RequireAuth>} />
+        <Route path="/admin/teachers/:id" element={<RequireAuth allowedRoles={["admin"]}><TeacherDetail /></RequireAuth>} />
         <Route path="/admin/teachers/:id/edit" element={<RequireAuth allowedRoles={["admin"]}><TeacherForm /></RequireAuth>} />
 
         <Route path="/admin/finance/fee-structure" element={<RequireAuth allowedRoles={["admin", "finance"]}><FeeStructurePage /></RequireAuth>} />
