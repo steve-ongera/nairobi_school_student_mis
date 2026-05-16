@@ -550,12 +550,18 @@ class PaymentSerializer(serializers.ModelSerializer):
     received_by_name = serializers.CharField(
         source="received_by.get_full_name", read_only=True
     )
+    # Add these two lines ↓
+    student_name = serializers.CharField(
+        source="invoice.student.user.get_full_name", read_only=True
+    )
+    invoice_display = serializers.CharField(
+        source="invoice.__str__", read_only=True
+    )
 
     class Meta:
         model = Payment
         fields = "__all__"
         read_only_fields = ["received_by", "created_at", "confirmed"]
-
 
 class InvoiceSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source="student.user.get_full_name", read_only=True)

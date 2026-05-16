@@ -18,6 +18,7 @@ export function InvoiceList() {
   const [showGen, setShowGen] = useState(false);
   const [genForm, setGenForm] = useState({ classroom: "", term: "" });
   const [genLoading, setGenLoading] = useState(false);
+
   const { data: classrooms } = useFetch(() => getClassrooms());
   const { data: terms } = useFetch(() => getTerms());
   const { data: invoices, loading, error, refetch } = useFetch(
@@ -37,59 +38,109 @@ export function InvoiceList() {
       setShowGen(false);
       refetch();
     } catch (err) {
-      setGenMsg({ type: "danger", text: err.response?.data?.detail || "Failed to generate." });
+      setGenMsg({
+        type: "danger",
+        text: err.response?.data?.detail || "Failed to generate invoices.",
+      });
     } finally {
       setGenLoading(false);
     }
   };
 
   const columns = [
-    { header: "Student", render: (inv) =>
-      <Link to={`/admin/students/${inv.student}`} className="fw-600">{inv.student_name}</Link> },
-    { header: "Adm No", key: "admission_number" },
-    { header: "Term", key: "term_display" },
-    { header: "Total", render: (inv) => <strong>{formatCurrency(inv.total_amount)}</strong> },
-    { header: "Paid", render: (inv) => <span className="text-success">{formatCurrency(inv.amount_paid)}</span> },
-    { header: "Balance", render: (inv) => (
-      <span className={parseFloat(inv.balance) > 0 ? "text-danger fw-700" : "text-success"}>
-        {formatCurrency(inv.balance)}
-      </span>
-    )},
-    { header: "Status", render: (inv) => <StatusBadge status={inv.status} /> },
+    {
+      header: "Student",
+      render: (inv) => (
+        <Link to={`/admin/students/${inv.student}`} className="fw-600">
+          {inv.student_name || "—"}
+        </Link>
+      ),
+    },
+    { header: "Adm No", render: (inv) => inv.admission_number || "—" },
+    { header: "Term", render: (inv) => inv.term_display || "—" },
+    {
+      header: "Total",
+      render: (inv) => <strong>{formatCurrency(inv.total_amount)}</strong>,
+    },
+    {
+      header: "Paid",
+      render: (inv) => (
+        <span className="text-success">{formatCurrency(inv.amount_paid)}</span>
+      ),
+    },
+    {
+      header: "Balance",
+      render: (inv) => (
+        <span
+          className={
+            parseFloat(inv.balance) > 0 ? "text-danger fw-700" : "text-success"
+          }
+        >
+          {formatCurrency(inv.balance)}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
+      render: (inv) => <StatusBadge status={inv.status} />,
+    },
   ];
 
   return (
     <>
-      <PageTitle title="Invoices" breadcrumbs={[{ label: "Finance" }, { label: "Invoices" }]} />
+      <PageTitle
+        title="Invoices"
+        breadcrumbs={[{ label: "Finance" }, { label: "Invoices" }]}
+      />
 
-      <AlertMessage type={genMsg.type} message={genMsg.text} onClose={() => setGenMsg({ type: "", text: "" })} />
+      <AlertMessage
+        type={genMsg.type}
+        message={genMsg.text}
+        onClose={() => setGenMsg({ type: "", text: "" })}
+      />
 
       <div className="card">
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <h5 className="card-title mb-0">All Invoices</h5>
             <div className="d-flex gap-2">
-              <SearchBar value={search} onChange={setSearch} placeholder="Search student…" />
-              <button className="btn btn-primary" onClick={() => setShowGen((s) => !s)}>
+              <SearchBar
+                value={search}
+                onChange={setSearch}
+                placeholder="Search student…"
+              />
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowGen((s) => !s)}
+              >
                 <i className="bi bi-receipt me-1" /> Generate
               </button>
             </div>
           </div>
 
           {showGen && (
-            <div className="p-3 mb-3 rounded" style={{ background: "#f6f9ff", border: "1px solid #ebeef4" }}>
-              <h6 className="text-primary-dark mb-3">Generate Invoices for Classroom</h6>
+            <div
+              className="p-3 mb-3 rounded"
+              style={{ background: "#f6f9ff", border: "1px solid #ebeef4" }}
+            >
+              <h6 className="text-primary-dark mb-3">
+                Generate Invoices for Classroom
+              </h6>
               <form onSubmit={handleGenerate} className="row g-2">
                 <div className="col-md-4">
                   <select
                     className="form-select form-select-sm"
                     value={genForm.classroom}
-                    onChange={(e) => setGenForm((f) => ({ ...f, classroom: e.target.value }))}
+                    onChange={(e) =>
+                      setGenForm((f) => ({ ...f, classroom: e.target.value }))
+                    }
                     required
                   >
                     <option value="">— Classroom —</option>
-                    {classrooms?.map((c) => (
-                      <option key={c.id} value={c.id}>{c.stream_display}</option>
+                    {(classrooms ?? []).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.stream_display}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -97,18 +148,30 @@ export function InvoiceList() {
                   <select
                     className="form-select form-select-sm"
                     value={genForm.term}
-                    onChange={(e) => setGenForm((f) => ({ ...f, term: e.target.value }))}
+                    onChange={(e) =>
+                      setGenForm((f) => ({ ...f, term: e.target.value }))
+                    }
                     required
                   >
                     <option value="">— Term —</option>
-                    {terms?.map((t) => (
-                      <option key={t.id} value={t.id}>{t.academic_year_display} – Term {t.term_number}</option>
+                    {(terms ?? []).map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.academic_year_display} – Term {t.term_number}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div className="col-md-2">
-                  <button type="submit" className="btn btn-success btn-sm w-100" disabled={genLoading}>
-                    {genLoading ? <span className="spinner-border spinner-border-sm" /> : "Generate"}
+                  <button
+                    type="submit"
+                    className="btn btn-success btn-sm w-100"
+                    disabled={genLoading}
+                  >
+                    {genLoading ? (
+                      <span className="spinner-border spinner-border-sm" />
+                    ) : (
+                      "Generate"
+                    )}
                   </button>
                 </div>
               </form>
@@ -116,7 +179,12 @@ export function InvoiceList() {
           )}
 
           {error && <AlertMessage type="danger" message={error} />}
-          <DataTable columns={columns} data={invoices} loading={loading} emptyMessage="No invoices found." />
+          <DataTable
+            columns={columns}
+            data={invoices ?? []}
+            loading={loading}
+            emptyMessage="No invoices found."
+          />
         </div>
       </div>
     </>
@@ -128,10 +196,16 @@ export function PaymentList() {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({
-    invoice: "", amount: "", payment_method: "cash", transaction_reference: "", payment_date: new Date().toISOString().slice(0, 10),
+    invoice: "",
+    amount: "",
+    payment_method: "cash",
+    transaction_reference: "",
+    payment_date: new Date().toISOString().slice(0, 10),
   });
   const [addMsg, setAddMsg] = useState({ type: "", text: "" });
-  const { data: invoices } = useFetch(() => getInvoices());
+
+  // Load invoices for the dropdown — needed to pick which invoice to pay
+  const { data: invoiceOptions } = useFetch(() => getInvoices());
   const { data: payments, loading, error, refetch } = useFetch(
     () => getPayments(search ? { search } : {}),
     [search]
@@ -140,89 +214,213 @@ export function PaymentList() {
   const handleAdd = async (e) => {
     e.preventDefault();
     try {
-      await createPayment({ ...addForm, amount: parseFloat(addForm.amount), invoice: parseInt(addForm.invoice) });
-      setAddMsg({ type: "success", text: "Payment recorded." });
+      await createPayment({
+        ...addForm,
+        amount: parseFloat(addForm.amount),
+        invoice: parseInt(addForm.invoice),
+      });
+      setAddMsg({ type: "success", text: "Payment recorded successfully." });
       refetch();
       setShowAdd(false);
+      setAddForm({
+        invoice: "",
+        amount: "",
+        payment_method: "cash",
+        transaction_reference: "",
+        payment_date: new Date().toISOString().slice(0, 10),
+      });
     } catch (err) {
-      setAddMsg({ type: "danger", text: err.response?.data?.detail || "Failed to record payment." });
+      setAddMsg({
+        type: "danger",
+        text: err.response?.data?.detail || "Failed to record payment.",
+      });
     }
   };
 
   const columns = [
-    { header: "Date", render: (p) => <span style={{ fontSize: 12 }}>{formatDateTime(p.payment_date)}</span> },
-    { header: "Student", render: (p) => p.invoice?.student_name || "—" },
-    { header: "Reference", render: (p) => <code style={{ fontSize: 11 }}>{p.transaction_reference || "—"}</code> },
-    { header: "Method", render: (p) => <span className="badge bg-info text-uppercase">{p.payment_method}</span> },
-    { header: "Amount", render: (p) => <strong className="text-success">{formatCurrency(p.amount)}</strong> },
-    { header: "Received By", render: (p) => p.received_by_name || "—" },
-    { header: "Status", render: (p) => (
-      <span className={`badge bg-${p.confirmed ? "success" : "warning"}`}>
-        {p.confirmed ? "Confirmed" : "Pending"}
-      </span>
-    )},
+    {
+      header: "Date",
+      render: (p) => (
+        <span style={{ fontSize: 12 }}>{formatDateTime(p.payment_date)}</span>
+      ),
+    },
+    {
+      // PaymentSerializer exposes student_name at the top level via
+      // the InvoiceSerializer nested under payments. If your serializer
+      // doesn't include it yet, add it as shown in the backend note below.
+      header: "Student",
+      render: (p) => p.student_name || p.invoice_student_name || "—",
+    },
+    {
+      header: "Reference",
+      render: (p) => (
+        <code style={{ fontSize: 11 }}>
+          {p.transaction_reference || "—"}
+        </code>
+      ),
+    },
+    {
+      header: "Method",
+      render: (p) => (
+        <span className="badge bg-info text-uppercase">{p.payment_method}</span>
+      ),
+    },
+    {
+      header: "Amount",
+      render: (p) => (
+        <strong className="text-success">{formatCurrency(p.amount)}</strong>
+      ),
+    },
+    {
+      header: "Received By",
+      render: (p) => p.received_by_name || "—",
+    },
+    {
+      header: "Status",
+      render: (p) => (
+        <span
+          className={`badge bg-${p.confirmed ? "success" : "warning"}`}
+        >
+          {p.confirmed ? "Confirmed" : "Pending"}
+        </span>
+      ),
+    },
   ];
 
   return (
     <>
-      <PageTitle title="Payments" breadcrumbs={[{ label: "Finance" }, { label: "Payments" }]} />
-      <AlertMessage type={addMsg.type} message={addMsg.text} onClose={() => setAddMsg({ type: "", text: "" })} />
+      <PageTitle
+        title="Payments"
+        breadcrumbs={[{ label: "Finance" }, { label: "Payments" }]}
+      />
+      <AlertMessage
+        type={addMsg.type}
+        message={addMsg.text}
+        onClose={() => setAddMsg({ type: "", text: "" })}
+      />
 
       <div className="card">
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <h5 className="card-title mb-0">All Payments</h5>
             <div className="d-flex gap-2">
-              <SearchBar value={search} onChange={setSearch} placeholder="Search reference…" />
-              <button className="btn btn-primary" onClick={() => setShowAdd((s) => !s)}>
+              <SearchBar
+                value={search}
+                onChange={setSearch}
+                placeholder="Search reference…"
+              />
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowAdd((s) => !s)}
+              >
                 <i className="bi bi-plus-circle me-1" /> Record Payment
               </button>
             </div>
           </div>
 
           {showAdd && (
-            <div className="p-3 mb-3 rounded" style={{ background: "#f6f9ff", border: "1px solid #ebeef4" }}>
+            <div
+              className="p-3 mb-3 rounded"
+              style={{ background: "#f6f9ff", border: "1px solid #ebeef4" }}
+            >
               <h6 className="mb-3 text-primary-dark">Record Manual Payment</h6>
               <form onSubmit={handleAdd} className="row g-2">
                 <div className="col-md-3">
-                  <select className="form-select form-select-sm" value={addForm.invoice}
-                    onChange={(e) => setAddForm((f) => ({ ...f, invoice: e.target.value }))} required>
+                  <select
+                    className="form-select form-select-sm"
+                    value={addForm.invoice}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, invoice: e.target.value }))
+                    }
+                    required
+                  >
                     <option value="">— Invoice —</option>
-                    {invoices?.map((inv) => (
-                      <option key={inv.id} value={inv.id}>{inv.student_name} – {inv.term_display}</option>
+                    {(invoiceOptions ?? []).map((inv) => (
+                      <option key={inv.id} value={inv.id}>
+                        {inv.student_name} – {inv.term_display} (
+                        {formatCurrency(inv.balance)} due)
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div className="col-md-2">
-                  <input type="number" className="form-control form-control-sm" placeholder="Amount (KES)"
-                    value={addForm.amount} onChange={(e) => setAddForm((f) => ({ ...f, amount: e.target.value }))} required />
+                  <input
+                    type="number"
+                    className="form-control form-control-sm"
+                    placeholder="Amount (KES)"
+                    value={addForm.amount}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, amount: e.target.value }))
+                    }
+                    required
+                    min={1}
+                  />
                 </div>
                 <div className="col-md-2">
-                  <select className="form-select form-select-sm" value={addForm.payment_method}
-                    onChange={(e) => setAddForm((f) => ({ ...f, payment_method: e.target.value }))}>
+                  <select
+                    className="form-select form-select-sm"
+                    value={addForm.payment_method}
+                    onChange={(e) =>
+                      setAddForm((f) => ({
+                        ...f,
+                        payment_method: e.target.value,
+                      }))
+                    }
+                  >
                     {["cash", "mpesa", "bank", "cheque"].map((m) => (
-                      <option key={m} value={m}>{m.toUpperCase()}</option>
+                      <option key={m} value={m}>
+                        {m.toUpperCase()}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div className="col-md-2">
-                  <input type="text" className="form-control form-control-sm" placeholder="Reference"
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    placeholder="Reference"
                     value={addForm.transaction_reference}
-                    onChange={(e) => setAddForm((f) => ({ ...f, transaction_reference: e.target.value }))} />
+                    onChange={(e) =>
+                      setAddForm((f) => ({
+                        ...f,
+                        transaction_reference: e.target.value,
+                      }))
+                    }
+                  />
                 </div>
                 <div className="col-md-2">
-                  <input type="date" className="form-control form-control-sm" value={addForm.payment_date}
-                    onChange={(e) => setAddForm((f) => ({ ...f, payment_date: e.target.value }))} />
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={addForm.payment_date}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) =>
+                      setAddForm((f) => ({
+                        ...f,
+                        payment_date: e.target.value,
+                      }))
+                    }
+                  />
                 </div>
                 <div className="col-md-1">
-                  <button type="submit" className="btn btn-success btn-sm w-100">Save</button>
+                  <button
+                    type="submit"
+                    className="btn btn-success btn-sm w-100"
+                  >
+                    Save
+                  </button>
                 </div>
               </form>
             </div>
           )}
 
           {error && <AlertMessage type="danger" message={error} />}
-          <DataTable columns={columns} data={payments} loading={loading} emptyMessage="No payments." />
+          <DataTable
+            columns={columns}
+            data={payments ?? []}
+            loading={loading}
+            emptyMessage="No payments found."
+          />
         </div>
       </div>
     </>
@@ -233,7 +431,15 @@ export function PaymentList() {
 export function FeeStructurePage() {
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [showForm, setShowForm] = useState(false);
-  const [newFee, setNewFee] = useState({ form: "", term: "", category: "", amount: "", description: "", is_mandatory: true });
+  const [newFee, setNewFee] = useState({
+    form: "",
+    term: "",
+    category: "",
+    amount: "",
+    description: "",
+    is_mandatory: true,
+  });
+
   const { data: fees, loading, error, refetch } = useFetch(() => getFeeStructures());
   const { data: terms } = useFetch(() => getTerms());
 
@@ -241,11 +447,15 @@ export function FeeStructurePage() {
     e.preventDefault();
     try {
       await createFeeStructure({ ...newFee, amount: parseFloat(newFee.amount) });
-      setMsg({ type: "success", text: "Fee structure created." });
+      setMsg({ type: "success", text: "Fee structure item created." });
       refetch();
       setShowForm(false);
+      setNewFee({ form: "", term: "", category: "", amount: "", description: "", is_mandatory: true });
     } catch (err) {
-      setMsg({ type: "danger", text: err.response?.data?.detail || "Failed to create." });
+      setMsg({
+        type: "danger",
+        text: err.response?.data?.detail || "Failed to create fee item.",
+      });
     }
   };
 
@@ -253,35 +463,56 @@ export function FeeStructurePage() {
     if (!window.confirm("Delete this fee item?")) return;
     try {
       await deleteFeeStructure(id);
-      setMsg({ type: "success", text: "Deleted." });
+      setMsg({ type: "success", text: "Fee item deleted." });
       refetch();
     } catch {
-      setMsg({ type: "danger", text: "Failed to delete." });
+      setMsg({ type: "danger", text: "Failed to delete fee item." });
     }
   };
 
   const columns = [
-    { header: "Form", key: "form_name" },
-    { header: "Term", key: "term_display" },
-    { header: "Category", key: "category" },
-    { header: "Description", key: "description" },
-    { header: "Amount", render: (f) => <strong>{formatCurrency(f.amount)}</strong> },
-    { header: "Mandatory", render: (f) => (
-      <span className={`badge bg-${f.is_mandatory ? "success" : "secondary"}`}>
-        {f.is_mandatory ? "Yes" : "No"}
-      </span>
-    )},
-    { header: "Actions", render: (f) => (
-      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(f.id)}>
-        <i className="bi bi-trash" />
-      </button>
-    )},
+    { header: "Form", render: (f) => f.form_name || "—" },
+    { header: "Term", render: (f) => f.term_display || "—" },
+    { header: "Category", render: (f) => f.category || "—" },
+    { header: "Description", render: (f) => f.description || "—" },
+    {
+      header: "Amount",
+      render: (f) => <strong>{formatCurrency(f.amount)}</strong>,
+    },
+    {
+      header: "Mandatory",
+      render: (f) => (
+        <span
+          className={`badge bg-${f.is_mandatory ? "success" : "secondary"}`}
+        >
+          {f.is_mandatory ? "Yes" : "No"}
+        </span>
+      ),
+    },
+    {
+      header: "Actions",
+      render: (f) => (
+        <button
+          className="btn btn-sm btn-outline-danger"
+          onClick={() => handleDelete(f.id)}
+        >
+          <i className="bi bi-trash" />
+        </button>
+      ),
+    },
   ];
 
   return (
     <>
-      <PageTitle title="Fee Structure" breadcrumbs={[{ label: "Finance" }, { label: "Fee Structure" }]} />
-      <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg({ type: "", text: "" })} />
+      <PageTitle
+        title="Fee Structure"
+        breadcrumbs={[{ label: "Finance" }, { label: "Fee Structure" }]}
+      />
+      <AlertMessage
+        type={msg.type}
+        message={msg.text}
+        onClose={() => setMsg({ type: "", text: "" })}
+      />
 
       {showForm && (
         <div className="card mb-3">
@@ -301,23 +532,35 @@ export function FeeStructurePage() {
                     className="form-control form-control-sm"
                     placeholder={field.placeholder}
                     value={newFee[field.key]}
-                    onChange={(e) => setNewFee((f) => ({ ...f, [field.key]: e.target.value }))}
+                    onChange={(e) =>
+                      setNewFee((f) => ({ ...f, [field.key]: e.target.value }))
+                    }
                     required={field.key !== "description"}
                   />
                 </div>
               ))}
               <div className="col-md-2">
                 <label className="form-label small fw-600">Term</label>
-                <select className="form-select form-select-sm" value={newFee.term}
-                  onChange={(e) => setNewFee((f) => ({ ...f, term: e.target.value }))} required>
+                <select
+                  className="form-select form-select-sm"
+                  value={newFee.term}
+                  onChange={(e) =>
+                    setNewFee((f) => ({ ...f, term: e.target.value }))
+                  }
+                  required
+                >
                   <option value="">— Term —</option>
-                  {terms?.map((t) => (
-                    <option key={t.id} value={t.id}>{t.academic_year_display} – T{t.term_number}</option>
+                  {(terms ?? []).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.academic_year_display} – T{t.term_number}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="col-md-1 d-flex align-items-end">
-                <button type="submit" className="btn btn-success btn-sm w-100">Add</button>
+                <button type="submit" className="btn btn-success btn-sm w-100">
+                  Add
+                </button>
               </div>
             </form>
           </div>
@@ -328,12 +571,20 @@ export function FeeStructurePage() {
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="card-title mb-0">Fee Structure</h5>
-            <button className="btn btn-primary" onClick={() => setShowForm((s) => !s)}>
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowForm((s) => !s)}
+            >
               <i className="bi bi-plus-circle me-1" /> Add Fee Item
             </button>
           </div>
           {error && <AlertMessage type="danger" message={error} />}
-          <DataTable columns={columns} data={fees} loading={loading} emptyMessage="No fee items configured." />
+          <DataTable
+            columns={columns}
+            data={fees ?? []}
+            loading={loading}
+            emptyMessage="No fee items configured."
+          />
         </div>
       </div>
     </>
@@ -349,34 +600,70 @@ export function MpesaReconcile() {
   );
 
   const columns = [
-    { header: "Date", render: (t) => <span style={{ fontSize: 12 }}>{formatDateTime(t.created_at)}</span> },
-    { header: "Phone", key: "phone_number" },
-    { header: "Account Ref", key: "account_reference" },
-    { header: "Amount", render: (t) => <strong className="text-success">{formatCurrency(t.amount)}</strong> },
-    { header: "Receipt", render: (t) => (
-      <code style={{ fontSize: 11 }}>{t.mpesa_receipt_number || "—"}</code>
-    )},
-    { header: "Status", render: (t) => (
-      <span className={`badge bg-${
-        t.status === "completed" ? "success" : t.status === "failed" ? "danger" : "warning"
-      }`}>
-        {t.status}
-      </span>
-    )},
+    {
+      header: "Date",
+      render: (t) => (
+        <span style={{ fontSize: 12 }}>{formatDateTime(t.created_at)}</span>
+      ),
+    },
+    { header: "Phone", render: (t) => t.phone_number || "—" },
+    { header: "Account Ref", render: (t) => t.account_reference || "—" },
+    {
+      header: "Amount",
+      render: (t) => (
+        <strong className="text-success">{formatCurrency(t.amount)}</strong>
+      ),
+    },
+    {
+      header: "Receipt",
+      render: (t) => (
+        <code style={{ fontSize: 11 }}>
+          {t.mpesa_receipt_number || "—"}
+        </code>
+      ),
+    },
+    {
+      header: "Status",
+      render: (t) => (
+        <span
+          className={`badge bg-${
+            t.status === "completed"
+              ? "success"
+              : t.status === "failed"
+              ? "danger"
+              : "warning"
+          }`}
+        >
+          {t.status}
+        </span>
+      ),
+    },
   ];
 
   return (
     <>
-      <PageTitle title="MPESA Transactions" breadcrumbs={[{ label: "Finance" }, { label: "MPESA" }]} />
+      <PageTitle
+        title="MPESA Transactions"
+        breadcrumbs={[{ label: "Finance" }, { label: "MPESA" }]}
+      />
 
       <div className="card">
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <h5 className="card-title mb-0">MPESA Transactions</h5>
-            <SearchBar value={search} onChange={setSearch} placeholder="Search phone or receipt…" />
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search phone or receipt…"
+            />
           </div>
           {error && <AlertMessage type="danger" message={error} />}
-          <DataTable columns={columns} data={transactions} loading={loading} emptyMessage="No MPESA transactions." />
+          <DataTable
+            columns={columns}
+            data={transactions ?? []}
+            loading={loading}
+            emptyMessage="No MPESA transactions found."
+          />
         </div>
       </div>
     </>
