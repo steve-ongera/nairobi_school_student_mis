@@ -1,3 +1,4 @@
+// Updated StudentList.jsx
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { getStudents, deleteStudent } from "../../../utils/api";
@@ -12,10 +13,16 @@ export default function StudentList() {
   const [deleteId, setDeleteId] = useState(null);
   const [msg, setMsg] = useState({ type: "", text: "" });
 
-  const { data: students, loading, error, refetch } = useFetch(
+  const { data: response, loading, error, refetch } = useFetch(
     () => getStudents(search ? { search } : {}),
     [search]
   );
+
+  // Handle different response structures
+  const students = response?.results || response?.data || (Array.isArray(response) ? response : []);
+  
+  console.log("Debug - Response:", response);
+  console.log("Debug - Students array:", students);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -29,26 +36,26 @@ export default function StudentList() {
   };
 
   const columns = [
-    { header: "Adm No", key: "admission_number", render: (s) =>
-      <Link to={`/admin/students/${s.id}`} className="fw-600">{s.admission_number}</Link> },
+    { header: "Adm No", key: "admission_number", render: (row) =>
+      <Link to={`/admin/students/${row.id}`} className="fw-600">{row.admission_number}</Link> },
     { header: "Name", key: "full_name" },
     { header: "Class", key: "current_classroom_display" },
-    { header: "Gender", key: "gender", render: (s) => s.gender?.charAt(0).toUpperCase() + s.gender?.slice(1) },
-    { header: "Boarding", key: "boarding_status", render: (s) =>
-      <span className="badge bg-info">{s.boarding_status}</span> },
-    { header: "Status", key: "status", render: (s) => <StatusBadge status={s.status} /> },
-    { header: "Admitted", key: "admission_date", render: (s) => formatDate(s.admission_date) },
-    { header: "Actions", render: (s) => (
+    { header: "Gender", key: "gender", render: (row) => row.gender?.charAt(0).toUpperCase() + row.gender?.slice(1) },
+    { header: "Boarding", key: "boarding_status", render: (row) =>
+      <span className="badge bg-info">{row.boarding_status}</span> },
+    { header: "Status", key: "status", render: (row) => <StatusBadge status={row.status} /> },
+    { header: "Admitted", key: "admission_date", render: (row) => formatDate(row.admission_date) },
+    { header: "Actions", render: (row) => (
       <div className="d-flex gap-1">
-        <Link to={`/admin/students/${s.id}`} className="btn btn-sm btn-outline-primary">
+        <Link to={`/admin/students/${row.id}`} className="btn btn-sm btn-outline-primary">
           <i className="bi bi-eye" />
         </Link>
-        <Link to={`/admin/students/${s.id}/edit`} className="btn btn-sm btn-outline-secondary">
+        <Link to={`/admin/students/${row.id}/edit`} className="btn btn-sm btn-outline-secondary">
           <i className="bi bi-pencil" />
         </Link>
         <button
           className="btn btn-sm btn-outline-danger"
-          onClick={() => setDeleteId(s.id)}
+          onClick={() => setDeleteId(row.id)}
           data-bs-toggle="modal"
           data-bs-target="#confirmDelete"
         >
@@ -88,11 +95,13 @@ export default function StudentList() {
       </div>
 
       <ConfirmDialog
-        id="confirmDelete"
+        show={!!deleteId}
         title="Delete Student"
         message="Are you sure you want to delete this student? This cannot be undone."
         onConfirm={handleDelete}
-        danger
+        onCancel={() => setDeleteId(null)}
+        confirmLabel="Delete"
+        confirmColor="danger"
       />
     </>
   );

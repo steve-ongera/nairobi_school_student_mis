@@ -1,3 +1,4 @@
+// Updated StudentForm.jsx
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createStudent, updateStudent, getStudent, getClassrooms, getForms } from "../../../utils/api";
@@ -17,12 +18,56 @@ export default function StudentForm() {
   const navigate = useNavigate();
   const [form, setForm] = useState(INITIAL);
   const [classrooms, setClassrooms] = useState([]);
+  const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const isEdit = Boolean(id);
 
   useEffect(() => {
-    getClassrooms().then((r) => setClassrooms(r.data)).catch(() => {});
+    // Load classrooms with proper error handling
+    const loadClassrooms = async () => {
+      try {
+        const response = await getClassrooms();
+        // Handle different response structures
+        let classroomsData = [];
+        if (response.data) {
+          classroomsData = Array.isArray(response.data) 
+            ? response.data 
+            : (response.data.results || response.data.data || []);
+        } else if (Array.isArray(response)) {
+          classroomsData = response;
+        } else if (response.results) {
+          classroomsData = response.results;
+        }
+        setClassrooms(classroomsData);
+        console.log("Loaded classrooms:", classroomsData); // Debug log
+      } catch (err) {
+        console.error("Failed to load classrooms:", err);
+        setClassrooms([]);
+      }
+    };
+
+    loadClassrooms();
+
+    // Load forms if needed
+    const loadForms = async () => {
+      try {
+        const response = await getForms();
+        let formsData = [];
+        if (response.data) {
+          formsData = Array.isArray(response.data) 
+            ? response.data 
+            : (response.data.results || []);
+        }
+        setForms(formsData);
+      } catch (err) {
+        console.error("Failed to load forms:", err);
+        setForms([]);
+      }
+    };
+    loadForms();
+
+    // Load student data if editing
     if (isEdit) {
       getStudent(id).then((r) => {
         const s = r.data;
@@ -45,9 +90,12 @@ export default function StudentForm() {
           blood_group: s.blood_group || "",
           medical_conditions: s.medical_conditions || "",
         });
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error("Failed to load student:", err);
+        setError("Failed to load student data");
+      });
     }
-  }, [id]);
+  }, [id, isEdit]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -103,6 +151,14 @@ export default function StudentForm() {
     </div>
   );
 
+  // Safely map classrooms with check
+  const classroomOptions = Array.isArray(classrooms) 
+    ? classrooms.map((c) => ({
+        value: c.id,
+        label: `${c.stream_display || c.name || c.stream} – ${c.academic_year_display || c.academic_year || ""}`,
+      }))
+    : [];
+
   return (
     <>
       <PageTitle
@@ -151,10 +207,7 @@ export default function StudentForm() {
               <Field
                 label="Classroom"
                 name="current_classroom"
-                options={classrooms.map((c) => ({
-                  value: c.id,
-                  label: `${c.stream_display} – ${c.academic_year_display}`,
-                }))}
+                options={classroomOptions}
               />
               <Field
                 label="Boarding Status"
