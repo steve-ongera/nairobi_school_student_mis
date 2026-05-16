@@ -1,5 +1,5 @@
 // src/components/layout/Navbar.jsx
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth, useTheme } from "../../hooks";
 
@@ -8,49 +8,84 @@ export default function Navbar() {
   const { toggleSidebar } = useTheme();
   const navigate = useNavigate();
   const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchRef = useRef(null);
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
-  // Generate 1-2 letter initials from full name
-  const initials = user?.full_name
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || "U";
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Implement search logic here
+      console.log("Searching for:", searchQuery);
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+      setSearchQuery("");
+      setShowSearch(false);
+    }
+  };
+
+  // Close search on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearch(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Generate initials from full name
+  const getInitials = () => {
+    if (user?.full_name) {
+      return user.full_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return user?.email?.charAt(0).toUpperCase() || "U";
+  };
+
+  // Get user role display name
+  const getRoleDisplay = (role) => {
+    const roles = {
+      admin: "Administrator",
+      teacher: "Teacher",
+      student: "Student",
+      finance: "Finance Officer"
+    };
+    return roles[role] || role;
+  };
 
   return (
-    <header className="header d-flex align-items-center">
+    <header className="header">
       <div className="d-flex align-items-center justify-content-between w-100">
 
-        {/* ── Logo ───────────────────────────────────────────── */}
-        <Link to="/" className="logo d-flex align-items-center">
-          <i
-            className="bi bi-mortarboard-fill text-primary me-2"
-            style={{ fontSize: 26 }}
-          />
-          <span>SchoolMIS</span>
+        {/* Logo Section */}
+        <Link to="/" className="logo">
+          <div className="logo-icon">
+            <i className="bi bi-mortarboard-fill" />
+          </div>
+          <span>SchoolMIS Pro</span>
         </Link>
 
-        {/* ── Toggle sidebar ─────────────────────────────────── */}
-        <i
-          className="bi bi-list toggle-sidebar-btn"
-          onClick={toggleSidebar}
-        />
+        {/* Sidebar Toggle */}
+        <i className="bi bi-list toggle-sidebar-btn" onClick={toggleSidebar} />
 
-        {/* ── Search bar ─────────────────────────────────────── */}
-        <div className={`search-bar ${showSearch ? "search-bar-show" : ""}`}>
-          <form
-            className="search-form d-flex align-items-center"
-            onSubmit={(e) => e.preventDefault()}
-          >
+        {/* Search Bar */}
+        <div className={`search-bar ${showSearch ? "search-bar-show" : ""}`} ref={searchRef}>
+          <form className="search-form" onSubmit={handleSearch}>
             <input
               type="text"
-              placeholder="Search students, exams, fees…"
+              placeholder="Search students, exams, fees..."
               aria-label="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button type="submit" aria-label="Submit search">
               <i className="bi bi-search" />
@@ -58,133 +93,126 @@ export default function Navbar() {
           </form>
         </div>
 
-        {/* ── Right-side icons ───────────────────────────────── */}
+        {/* Navigation Actions */}
         <nav className="header-nav ms-auto">
-          <ul className="d-flex align-items-center">
+          <ul className="d-flex align-items-center gap-2">
 
-            {/* Mobile search toggle */}
+            {/* Mobile Search Toggle */}
             <li className="nav-item d-block d-lg-none">
               <button
-                className="btn border-0 p-0"
-                style={{ fontSize: 22, color: "var(--primary-deep)" }}
-                onClick={() => setShowSearch((s) => !s)}
+                className="nav-icon btn border-0 p-0"
+                onClick={() => setShowSearch(!showSearch)}
                 aria-label="Toggle search"
               >
                 <i className="bi bi-search" />
               </button>
             </li>
 
-            {/* ── Notifications ────────────────────────────── */}
+            {/* Notifications */}
             <li className="nav-item dropdown">
               <span
-                className="nav-link nav-icon"
+                className="nav-icon"
                 role="button"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
-                style={{ cursor: "pointer" }}
               >
                 <i className="bi bi-bell" />
-                <span className="badge-number badge bg-primary">3</span>
+                <span className="badge-number">3</span>
               </span>
 
-              <ul className="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications">
+              <ul className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                 <li className="dropdown-header">
-                  You have <b>3</b> new notifications
-                  <Link to="/notifications">
-                    <span className="badge rounded-pill bg-primary p-2 ms-2">
-                      View all
-                    </span>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <h6 className="mb-0">Notifications</h6>
+                    <Link to="/notifications" className="small">View all</Link>
+                  </div>
+                </li>
+                <li><hr className="dropdown-divider" /></li>
+
+                <li>
+                  <Link className="dropdown-item" to="/notifications/payment">
+                    <i className="bi bi-cash-coin text-success"></i>
+                    <div>
+                      <div className="fw-semibold">Fee payment received</div>
+                      <small className="text-muted">MPESA – KES 15,000</small>
+                    </div>
                   </Link>
                 </li>
                 <li><hr className="dropdown-divider" /></li>
 
-                <li className="notification-item">
-                  <i className="bi bi-cash-coin text-success" />
-                  <div>
-                    <h4>Fee payment received</h4>
-                    <p>MPESA – KES 15,000</p>
-                  </div>
+                <li>
+                  <Link className="dropdown-item" to="/notifications/exam">
+                    <i className="bi bi-journal-check text-primary"></i>
+                    <div>
+                      <div className="fw-semibold">Exam results published</div>
+                      <small className="text-muted">End Term 1 – Form 2</small>
+                    </div>
+                  </Link>
                 </li>
                 <li><hr className="dropdown-divider" /></li>
 
-                <li className="notification-item">
-                  <i className="bi bi-journal-check text-primary" />
-                  <div>
-                    <h4>Exam results published</h4>
-                    <p>End Term 1 – Form 2</p>
-                  </div>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-
-                <li className="notification-item">
-                  <i className="bi bi-person-plus text-warning" />
-                  <div>
-                    <h4>New student admitted</h4>
-                    <p>Form 1 – Stream A</p>
-                  </div>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-
-                <li className="dropdown-footer">
-                  <Link to="/notifications">Show all notifications</Link>
+                <li>
+                  <Link className="dropdown-item" to="/notifications/student">
+                    <i className="bi bi-person-plus text-warning"></i>
+                    <div>
+                      <div className="fw-semibold">New student admitted</div>
+                      <small className="text-muted">Form 1 – Stream A</small>
+                    </div>
+                  </Link>
                 </li>
               </ul>
             </li>
 
-            {/* ── Profile ──────────────────────────────────── */}
-            <li className="nav-item dropdown pe-3">
+            {/* Profile Dropdown */}
+            <li className="nav-item dropdown pe-2">
               <span
-                className="nav-link nav-profile d-flex align-items-center pe-0 gap-2"
+                className="nav-profile"
                 role="button"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
-                style={{ cursor: "pointer" }}
               >
-                {/* Avatar: show photo if available, else initials */}
                 {user?.avatar_url ? (
                   <img
                     src={user.avatar_url}
                     alt={user.full_name}
                     className="rounded-circle"
-                    style={{ width: 36, height: 36, objectFit: "cover" }}
                   />
                 ) : (
-                  <div className="avatar-initials">{initials}</div>
+                  <div className="avatar-initials">{getInitials()}</div>
                 )}
-
-                <span className="d-none d-md-block fw-semibold" style={{ fontSize: 14 }}>
-                  {user?.full_name?.split(" ")[0] ?? "User"}
+                <span className="d-none d-md-block">
+                  {user?.full_name?.split(" ")[0] || "User"}
                 </span>
-                <i className="bi bi-chevron-down d-none d-md-block" style={{ fontSize: 11 }} />
+                <i className="bi bi-chevron-down d-none d-md-block" />
               </span>
 
-              <ul className="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
-                <li className="dropdown-header px-4 py-3">
-                  <h6 className="mb-1">{user?.full_name}</h6>
-                  <span className="text-capitalize text-muted" style={{ fontSize: 12 }}>
-                    {user?.role}
+              <ul className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                <li className="dropdown-header">
+                  <h6 className="mb-1">{user?.full_name || user?.email}</h6>
+                  <span className="text-capitalize">
+                    {getRoleDisplay(user?.role)}
                   </span>
                 </li>
                 <li><hr className="dropdown-divider" /></li>
 
                 <li>
-                  <Link className="dropdown-item d-flex align-items-center" to="/profile">
-                    <i className="bi bi-person text-primary" />
+                  <Link className="dropdown-item" to="/profile">
+                    <i className="bi bi-person"></i>
                     <span>My Profile</span>
                   </Link>
                 </li>
 
                 <li>
-                  <Link className="dropdown-item d-flex align-items-center" to="/change-password">
-                    <i className="bi bi-lock text-secondary" />
+                  <Link className="dropdown-item" to="/change-password">
+                    <i className="bi bi-shield-lock"></i>
                     <span>Change Password</span>
                   </Link>
                 </li>
 
                 <li>
-                  <Link className="dropdown-item d-flex align-items-center" to="/settings">
-                    <i className="bi bi-gear text-secondary" />
-                    <span>Account Settings</span>
+                  <Link className="dropdown-item" to="/settings">
+                    <i className="bi bi-sliders2"></i>
+                    <span>Preferences</span>
                   </Link>
                 </li>
 
@@ -192,11 +220,10 @@ export default function Navbar() {
 
                 <li>
                   <button
-                    className="dropdown-item d-flex align-items-center text-danger w-100"
-                    style={{ border: 0, background: "none" }}
+                    className="dropdown-item text-danger"
                     onClick={handleLogout}
                   >
-                    <i className="bi bi-box-arrow-right" />
+                    <i className="bi bi-box-arrow-right"></i>
                     <span>Sign Out</span>
                   </button>
                 </li>
