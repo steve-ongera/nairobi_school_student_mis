@@ -81,6 +81,7 @@ export const deleteAllocation = (id) => api.delete(`/teachers/allocations/${id}/
 
 // ── STUDENTS ──────────────────────────────────────────────────────────────────
 export const getStudents = (params) => api.get("/students/", { params });
+export const getArchivedStudents = (params) => api.get("/students/archive/", { params });
 export const getStudent = (id) => api.get(`/students/${id}/`);
 export const createStudent = (data) => api.post("/students/", data);
 export const updateStudent = (id, data) => api.patch(`/students/${id}/`, data);

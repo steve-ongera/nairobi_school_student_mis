@@ -12,6 +12,7 @@ import StudentDetail from "./pages/admin/students/StudentDetail";
 import StudentForm from "./pages/admin/students/StudentForm";
 import StudentPromotion from "./pages/admin/students/StudentPromotion";
 import StudentImport from "./pages/admin/students/StudentImport";
+import StudentArchive from "./pages/admin/students/StudentArchive";
 import { ClassroomList, SubjectList, AcademicYearList } from "./pages/admin/academics/Academics";
 import ExamList from "./pages/admin/exams/ExamList";
 import ExamForm from "./pages/admin/exams/ExamForm";
@@ -82,44 +83,54 @@ export default function App() {
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/notifications" element={<Notifications />} />
 
-        {/* Admin */}
+        {/* ── Admin ── */}
         <Route path="/admin/dashboard" element={<RequireAuth allowedRoles={["admin"]}><AdminDashboard /></RequireAuth>} />
+
+        {/* Students — specific named routes MUST come before the :id wildcard */}
         <Route path="/admin/students" element={<RequireAuth allowedRoles={["admin", "teacher"]}><StudentList /></RequireAuth>} />
         <Route path="/admin/students/new" element={<RequireAuth allowedRoles={["admin"]}><StudentForm /></RequireAuth>} />
         <Route path="/admin/students/promote" element={<RequireAuth allowedRoles={["admin"]}><StudentPromotion /></RequireAuth>} />
         <Route path="/admin/students/import" element={<RequireAuth allowedRoles={["admin"]}><StudentImport /></RequireAuth>} />
+        <Route path="/admin/students/archive" element={<RequireAuth allowedRoles={["admin", "teacher"]}><StudentArchive /></RequireAuth>} />
+        {/* :id wildcard — must be last among student routes */}
         <Route path="/admin/students/:id" element={<RequireAuth allowedRoles={["admin", "teacher"]}><StudentDetail /></RequireAuth>} />
         <Route path="/admin/students/:id/edit" element={<RequireAuth allowedRoles={["admin"]}><StudentForm /></RequireAuth>} />
 
+        {/* Academics */}
         <Route path="/admin/academics/years" element={<RequireAuth allowedRoles={["admin"]}><AcademicYearList /></RequireAuth>} />
         <Route path="/admin/academics/classrooms" element={<RequireAuth allowedRoles={["admin"]}><ClassroomList /></RequireAuth>} />
         <Route path="/admin/academics/subjects" element={<RequireAuth allowedRoles={["admin"]}><SubjectList /></RequireAuth>} />
 
+        {/* Exams */}
         <Route path="/admin/exams" element={<RequireAuth allowedRoles={["admin"]}><ExamList /></RequireAuth>} />
         <Route path="/admin/exams/new" element={<RequireAuth allowedRoles={["admin"]}><ExamForm /></RequireAuth>} />
+        <Route path="/admin/exams/report-cards" element={<RequireAuth allowedRoles={["admin"]}><ReportCards /></RequireAuth>} />
         <Route path="/admin/exams/:id/edit" element={<RequireAuth allowedRoles={["admin"]}><ExamForm /></RequireAuth>} />
         <Route path="/admin/exams/:id/results" element={<RequireAuth allowedRoles={["admin", "teacher"]}><ExamResults /></RequireAuth>} />
-        <Route path="/admin/exams/report-cards" element={<RequireAuth allowedRoles={["admin"]}><ReportCards /></RequireAuth>} />
 
+        {/* Teachers */}
         <Route path="/admin/teachers" element={<RequireAuth allowedRoles={["admin"]}><TeacherList /></RequireAuth>} />
         <Route path="/admin/teachers/new" element={<RequireAuth allowedRoles={["admin"]}><TeacherForm /></RequireAuth>} />
         <Route path="/admin/teachers/allocations" element={<RequireAuth allowedRoles={["admin"]}><SubjectAllocation /></RequireAuth>} />
         <Route path="/admin/teachers/:id" element={<RequireAuth allowedRoles={["admin"]}><TeacherDetail /></RequireAuth>} />
         <Route path="/admin/teachers/:id/edit" element={<RequireAuth allowedRoles={["admin"]}><TeacherForm /></RequireAuth>} />
 
+        {/* Finance */}
         <Route path="/admin/finance/fee-structure" element={<RequireAuth allowedRoles={["admin", "finance"]}><FeeStructurePage /></RequireAuth>} />
         <Route path="/admin/finance/invoices" element={<RequireAuth allowedRoles={["admin", "finance"]}><InvoiceList /></RequireAuth>} />
         <Route path="/admin/finance/payments" element={<RequireAuth allowedRoles={["admin", "finance"]}><PaymentList /></RequireAuth>} />
         <Route path="/admin/finance/mpesa" element={<RequireAuth allowedRoles={["admin", "finance"]}><MpesaReconcile /></RequireAuth>} />
         <Route path="/admin/finance/reports" element={<RequireAuth allowedRoles={["admin", "finance"]}><FinanceReports /></RequireAuth>} />
 
+        {/* Attendance */}
         <Route path="/admin/attendance" element={<RequireAuth allowedRoles={["admin"]}><AttendanceList /></RequireAuth>} />
         <Route path="/admin/attendance/report" element={<RequireAuth allowedRoles={["admin"]}><AttendanceReport /></RequireAuth>} />
 
+        {/* Settings */}
         <Route path="/admin/settings/school" element={<RequireAuth allowedRoles={["admin"]}><SchoolSettings /></RequireAuth>} />
         <Route path="/admin/settings/grading" element={<RequireAuth allowedRoles={["admin"]}><GradingSettings /></RequireAuth>} />
 
-        {/* Teacher */}
+        {/* ── Teacher ── */}
         <Route path="/teacher/dashboard" element={<RequireAuth allowedRoles={["teacher"]}><TeacherDashboard /></RequireAuth>} />
         <Route path="/teacher/marks/subjects" element={<RequireAuth allowedRoles={["teacher"]}><MySubjects /></RequireAuth>} />
         <Route path="/teacher/marks/entry" element={<RequireAuth allowedRoles={["teacher", "admin"]}><MarksEntry /></RequireAuth>} />
@@ -128,11 +139,11 @@ export default function App() {
         <Route path="/teacher/attendance" element={<RequireAuth allowedRoles={["teacher", "admin"]}><TakeAttendance /></RequireAuth>} />
         <Route path="/teacher/reports/stream" element={<RequireAuth allowedRoles={["teacher", "admin"]}><StreamReport /></RequireAuth>} />
 
-        {/* Student */}
+        {/* ── Student ── */}
         <Route path="/student/dashboard" element={<RequireAuth allowedRoles={["student", "parent"]}><StudentDashboard /></RequireAuth>} />
         <Route path="/student/results" element={<RequireAuth allowedRoles={["student"]}><MyResults /></RequireAuth>} />
-        <Route path="/student/results/:examId" element={<RequireAuth allowedRoles={["student"]}><ResultDetail /></RequireAuth>} />
         <Route path="/student/results/report-card" element={<RequireAuth allowedRoles={["student"]}><ReportCard /></RequireAuth>} />
+        <Route path="/student/results/:examId" element={<RequireAuth allowedRoles={["student"]}><ResultDetail /></RequireAuth>} />
         <Route path="/student/fees/statement" element={<RequireAuth allowedRoles={["student"]}><FeeStatement /></RequireAuth>} />
         <Route path="/student/fees/pay" element={<RequireAuth allowedRoles={["student"]}><PayFee /></RequireAuth>} />
         <Route path="/student/fees/payments" element={<RequireAuth allowedRoles={["student"]}><PaymentHistory /></RequireAuth>} />

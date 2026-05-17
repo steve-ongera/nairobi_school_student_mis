@@ -89,6 +89,7 @@ router.register(r"notifications", NotificationViewSet, basename="notification")
 # Promotions
 router.register(r"promotions", StudentPromotionViewSet, basename="promotion")
 
+
 urlpatterns = [
     # Auth
     path("auth/login/", LoginView.as_view(), name="auth-login"),

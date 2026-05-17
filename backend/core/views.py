@@ -415,6 +415,16 @@ class StudentViewSet(ModelViewSet):
         serializer = StudentDetailSerializer(student, context={"request": request})
         return Response(serializer.data)
 
+    # ADD THE ARCHIVE ACTION HERE - INSIDE THE CLASS
+    @action(detail=False, methods=["get"], url_path="archive", url_name="archive")
+    def archive(self, request):
+        """GET /api/students/archive/ – Students who are graduated or inactive."""
+        archived = Student.objects.filter(
+            status__in=["graduated", "inactive", "transferred"]
+        ).select_related("user", "current_classroom__stream__form")
+        serializer = StudentListSerializer(archived, many=True)
+        return Response(serializer.data)
+
 
 # =============================================================================
 # 5. EXAM & RESULTS VIEWS
@@ -1521,12 +1531,4 @@ class StreamReportView(APIView):
         
         
         
-        
-@action(detail=False, methods=["get"])
-def archive(self, request):
-    """GET /api/students/archive/ – Students who are graduated or inactive."""
-    archived = Student.objects.filter(
-        status__in=["graduated", "inactive", "transferred"]
-    ).select_related("user", "current_classroom__stream__form")
-    serializer = StudentListSerializer(archived, many=True)
-    return Response(serializer.data)
+  
