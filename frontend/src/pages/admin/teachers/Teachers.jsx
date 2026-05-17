@@ -375,17 +375,67 @@ export function TeacherForm() {
 
 /* ── SubjectAllocation ───────────────────────────────────────────────── */
 export function SubjectAllocation() {
-  const [msg,  setMsg]  = useState({ type: "", text: "" });
-  const [form, setForm] = useState({
+  const [msg,    setMsg]    = useState({ type: "", text: "" });
+  const [form,   setForm]   = useState({
     teacher: "", subject: "", classroom: "", academic_year: "",
   });
+
+  // ── pagination + search state ──────────────────────────────────────
+  const [allocs,  setAllocs]  = useState([]);
+  const [count,   setCount]   = useState(0);
+  const [page,    setPage]    = useState(1);
+  const [search,  setSearch]  = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const PAGE_SIZE  = 15;
+  const totalPages = Math.ceil(count / PAGE_SIZE);
 
   const { data: teachers  } = useFetch(() => getTeachers());
   const { data: subjects   } = useFetch(() => getSubjects());
   const { data: classrooms } = useFetch(() => getClassrooms());
   const { data: years      } = useFetch(() => getAcademicYears());
-  const { data: allocs, loading, refetch } = useFetch(() => getAllocations());
 
+  // ── fetch allocations ──────────────────────────────────────────────
+  const fetchAllocs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = { page, page_size: PAGE_SIZE };
+      if (search) params.search = search;
+      const res     = await getAllocations(params);
+      const payload = res?.data ?? res;
+      if (payload?.results !== undefined) {
+        setAllocs(payload.results);
+        setCount(payload.count ?? payload.results.length);
+      } else if (Array.isArray(payload)) {
+        setAllocs(payload);
+        setCount(payload.length);
+      } else {
+        setAllocs([]);
+        setCount(0);
+      }
+    } catch {
+      setMsg({ type: "danger", text: "Failed to load allocations." });
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search]);
+
+  useEffect(() => { fetchAllocs(); }, [fetchAllocs]);
+  useEffect(() => { setPage(1); },   [search]);
+
+  // ── page numbers helper ────────────────────────────────────────────
+  const getPageNumbers = () => {
+    const delta = 2;
+    const range = [];
+    for (
+      let i = Math.max(1, page - delta);
+      i <= Math.min(totalPages, page + delta);
+      i++
+    ) range.push(i);
+    return range;
+  };
+
+  // ── create allocation ──────────────────────────────────────────────
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
@@ -396,19 +446,26 @@ export function SubjectAllocation() {
         academic_year: parseInt(form.academic_year),
       });
       setMsg({ type: "success", text: "Allocation created successfully." });
-      refetch();
       setForm({ teacher: "", subject: "", classroom: "", academic_year: "" });
+      setPage(1);
+      fetchAllocs();
     } catch (err) {
-      setMsg({ type: "danger", text: err.response?.data?.detail || "Failed to create allocation." });
+      setMsg({
+        type: "danger",
+        text: err.response?.data?.detail || "Failed to create allocation.",
+      });
     }
   };
 
+  // ── delete allocation ──────────────────────────────────────────────
   const handleDelete = async (id) => {
     if (!window.confirm("Remove this allocation?")) return;
     try {
       await deleteAllocation(id);
       setMsg({ type: "success", text: "Allocation removed." });
-      refetch();
+      // If we deleted the last item on a non-first page, step back
+      if (allocs.length === 1 && page > 1) setPage((p) => p - 1);
+      else fetchAllocs();
     } catch {
       setMsg({ type: "danger", text: "Failed to remove allocation." });
     }
@@ -453,6 +510,7 @@ export function SubjectAllocation() {
         onClose={() => setMsg({ type: "", text: "" })}
       />
 
+      {/* ── Create form ── */}
       <div className="card mb-3">
         <div className="card-header">
           <h5 className="card-title mb-0">Assign Teacher → Subject → Classroom</h5>
@@ -466,18 +524,24 @@ export function SubjectAllocation() {
                   <select
                     className="form-select form-select-sm"
                     value={form[key]}
-                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, [key]: e.target.value }))
+                    }
                     required
                   >
                     <option value="">— {label} —</option>
                     {options.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
                     ))}
                   </select>
                 </div>
               ))}
               <div>
-                <label className="form-label" style={{ visibility: "hidden" }}>Go</label>
+                <label className="form-label" style={{ visibility: "hidden" }}>
+                  Go
+                </label>
                 <button type="submit" className="btn btn-primary btn-sm w-100">
                   <i className="bi bi-plus-circle" /> Assign
                 </button>
@@ -487,55 +551,165 @@ export function SubjectAllocation() {
         </div>
       </div>
 
+      {/* ── Allocations table ── */}
       <div className="card">
-        <div className="card-header">
-          <h5 className="card-title mb-0">Current Allocations</h5>
-        </div>
-        <div className="card-body p-0">
-          {loading ? (
-            <div className="p-4"><LoadingSpinner /></div>
-          ) : (
-            <div className="table-responsive">
-              <table className="alloc-table">
-                <thead>
+        <div className="card-body">
+
+          {/* toolbar: title + count + search */}
+          <div className="tbl-toolbar mb-3">
+            <h5 className="card-title mb-0">
+              Current Allocations{" "}
+              {count > 0 && (
+                <span className="badge bg-primary ms-2">{count}</span>
+              )}
+            </h5>
+            <div className="tbl-toolbar__right">
+              <SearchBar
+                value={search}
+                onChange={setSearch}
+                placeholder="Search teacher or subject…"
+              />
+            </div>
+          </div>
+
+          {/* table */}
+          <div className="table-responsive">
+            <table className="alloc-table">
+              <thead>
+                <tr>
+                  <th>Teacher</th>
+                  <th>Subject</th>
+                  <th>Classroom</th>
+                  <th>Year</th>
+                  <th style={{ width: 60 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
                   <tr>
-                    <th>Teacher</th>
-                    <th>Subject</th>
-                    <th>Classroom</th>
-                    <th>Year</th>
-                    <th style={{ width: 60 }}></th>
+                    <td colSpan={5} className="text-center py-4">
+                      <LoadingSpinner />
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {(allocs ?? []).length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center text-muted py-4">
-                        No allocations found.
+                ) : allocs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center text-muted py-4">
+                      No allocations found.
+                    </td>
+                  </tr>
+                ) : (
+                  allocs.map((a) => (
+                    <tr key={a.id}>
+                      <td className="alloc-teacher">{a.teacher_name}</td>
+                      <td className="alloc-subject">{a.subject_name}</td>
+                      <td className="alloc-class">{a.classroom_display}</td>
+                      <td className="alloc-class">{a.academic_year_display}</td>
+                      <td>
+                        <button
+                          className="tbl-btn tbl-btn--del"
+                          onClick={() => handleDelete(a.id)}
+                          title="Remove allocation"
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
                       </td>
                     </tr>
-                  ) : (
-                    (allocs ?? []).map((a) => (
-                      <tr key={a.id}>
-                        <td className="alloc-teacher">{a.teacher_name}</td>
-                        <td className="alloc-subject">{a.subject_name}</td>
-                        <td className="alloc-class">{a.classroom_display}</td>
-                        <td className="alloc-class">{a.academic_year_display}</td>
-                        <td>
-                          <button
-                            className="tbl-btn tbl-btn--del"
-                            onClick={() => handleDelete(a.id)}
-                            title="Remove allocation"
-                          >
-                            <i className="bi bi-trash" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* pagination */}
+          {totalPages > 1 && (
+            <div className="d-flex align-items-center justify-content-between mt-3 flex-wrap gap-2">
+              <small className="text-muted">
+                Showing{" "}
+                <strong>{(page - 1) * PAGE_SIZE + 1}</strong>–
+                <strong>{Math.min(page * PAGE_SIZE, count)}</strong> of{" "}
+                <strong>{count}</strong> allocations
+              </small>
+
+              <nav>
+                <ul className="pagination pagination-sm mb-0">
+                  {/* First */}
+                  <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => setPage(1)}
+                      disabled={page === 1}
+                      title="First"
+                    >
+                      «
+                    </button>
+                  </li>
+                  {/* Prev */}
+                  <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => setPage((p) => p - 1)}
+                      disabled={page === 1}
+                    >
+                      ‹
+                    </button>
+                  </li>
+
+                  {page > 3 && (
+                    <li className="page-item disabled">
+                      <span className="page-link">…</span>
+                    </li>
                   )}
-                </tbody>
-              </table>
+
+                  {getPageNumbers().map((n) => (
+                    <li
+                      key={n}
+                      className={`page-item ${n === page ? "active" : ""}`}
+                    >
+                      <button
+                        className="page-link"
+                        onClick={() => setPage(n)}
+                      >
+                        {n}
+                      </button>
+                    </li>
+                  ))}
+
+                  {page < totalPages - 2 && (
+                    <li className="page-item disabled">
+                      <span className="page-link">…</span>
+                    </li>
+                  )}
+
+                  {/* Next */}
+                  <li
+                    className={`page-item ${page === totalPages ? "disabled" : ""}`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page === totalPages}
+                    >
+                      ›
+                    </button>
+                  </li>
+                  {/* Last */}
+                  <li
+                    className={`page-item ${page === totalPages ? "disabled" : ""}`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => setPage(totalPages)}
+                      disabled={page === totalPages}
+                      title="Last"
+                    >
+                      »
+                    </button>
+                  </li>
+                </ul>
+              </nav>
             </div>
           )}
+
         </div>
       </div>
     </>

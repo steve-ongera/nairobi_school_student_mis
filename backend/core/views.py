@@ -301,6 +301,7 @@ class TeacherViewSet(ModelViewSet):
         return Response(serializer.data)
 
 
+
 class TeacherSubjectAllocationViewSet(ModelViewSet):
     queryset = TeacherSubjectAllocation.objects.select_related(
         "teacher__user", "subject", "classroom__stream__form", "academic_year"
@@ -308,7 +309,10 @@ class TeacherSubjectAllocationViewSet(ModelViewSet):
     serializer_class = TeacherSubjectAllocationSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
     filterset_fields = ["teacher", "subject", "classroom", "academic_year"]
-
+    # Add these three lines ↓
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields   = ["teacher__user__first_name", "teacher__user__last_name", "subject__name"]
+    ordering_fields = ["teacher__user__last_name", "subject__name"]
 
 # =============================================================================
 # 4. STUDENT VIEWS
