@@ -1,5 +1,5 @@
 // src/pages/admin/teachers/Teachers.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   getTeachers, createTeacher, updateTeacher, deleteTeacher,
@@ -11,7 +11,7 @@ import {
   PageTitle, DataTable, SearchBar, AlertMessage, ConfirmDialog, LoadingSpinner,
 } from "../../../components/common";
 
-// ✅ Field defined at MODULE level — never remounts on re-render
+// ✅ Field at module level — never remounts on re-render
 const Field = ({ label, name, type = "text", required = false, placeholder, colClass = "col-md-6", form, set }) => (
   <div className={`${colClass} mb-3`}>
     <label className="form-label">
@@ -31,24 +31,66 @@ const Field = ({ label, name, type = "text", required = false, placeholder, colC
 /* ── TeacherList ─────────────────────────────────────────────────────── */
 export function TeacherList() {
   const [search,   setSearch]   = useState("");
+  const [page,     setPage]     = useState(1);
+  const [data,     setData]     = useState([]);
+  const [count,    setCount]    = useState(0);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
   const [deleteId, setDeleteId] = useState(null);
   const [msg,      setMsg]      = useState({ type: "", text: "" });
 
-  const { data: teachers, loading, error, refetch } = useFetch(
-    () => getTeachers(search ? { search } : {}),
-    [search]
-  );
+  const PAGE_SIZE  = 20;
+  const totalPages = Math.ceil(count / PAGE_SIZE);
+
+  const fetchTeachers = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = { page };
+      if (search) params.search = search;
+      const response = await getTeachers(params);
+      const payload  = response?.data ?? response;
+      if (payload?.results !== undefined) {
+        setData(payload.results);
+        setCount(payload.count ?? payload.results.length);
+      } else if (Array.isArray(payload)) {
+        setData(payload);
+        setCount(payload.length);
+      } else {
+        setData([]);
+        setCount(0);
+      }
+    } catch (err) {
+      setError("Failed to load teachers.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, page]);
+
+  useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
+  useEffect(() => { setPage(1); }, [search]);
 
   const handleDelete = async () => {
     try {
       await deleteTeacher(deleteId);
       setMsg({ type: "success", text: "Teacher deleted." });
-      refetch();
+      if (data.length === 1 && page > 1) setPage((p) => p - 1);
+      else fetchTeachers();
     } catch {
       setMsg({ type: "danger", text: "Failed to delete teacher." });
     } finally {
       setDeleteId(null);
     }
+  };
+
+  const getPageNumbers = () => {
+    const delta = 2;
+    const range = [];
+    for (let i = Math.max(1, page - delta); i <= Math.min(totalPages, page + delta); i++) {
+      range.push(i);
+    }
+    return range;
   };
 
   const columns = [
@@ -64,15 +106,10 @@ export function TeacherList() {
       header: "Teacher",
       render: (t) => (
         <div className="teacher-cell">
-          <div className="teacher-avatar">
-            {t.full_name?.charAt(0).toUpperCase()}
-          </div>
+          <div className="teacher-avatar">{t.full_name?.charAt(0).toUpperCase()}</div>
           <div>
-            <Link
-              to={`/admin/teachers/${t.id}`}
-              className="teacher-cell__name"
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
+            <Link to={`/admin/teachers/${t.id}`} className="teacher-cell__name"
+              style={{ textDecoration: "none", color: "inherit" }}>
               {t.full_name}
             </Link>
             <div className="teacher-cell__sub">{t.email}</div>
@@ -90,9 +127,7 @@ export function TeacherList() {
     },
     {
       header: "Subjects",
-      render: (t) => (
-        <span className="count-chip">{t.allocation_count ?? 0}</span>
-      ),
+      render: (t) => <span className="count-chip">{t.allocation_count ?? 0}</span>,
     },
     {
       header: "Status",
@@ -140,7 +175,10 @@ export function TeacherList() {
       <div className="card">
         <div className="card-body">
           <div className="tbl-toolbar">
-            <h5 className="card-title mb-0">All Teachers</h5>
+            <h5 className="card-title mb-0">
+              All Teachers{" "}
+              {count > 0 && <span className="badge bg-primary ms-2">{count}</span>}
+            </h5>
             <div className="tbl-toolbar__right">
               <SearchBar
                 value={search}
@@ -157,10 +195,49 @@ export function TeacherList() {
 
           <DataTable
             columns={columns}
-            data={teachers ?? []}
+            data={data}
             loading={loading}
             emptyMessage="No teachers found."
           />
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="d-flex align-items-center justify-content-between mt-3 flex-wrap gap-2">
+              <small className="text-muted">
+                Showing <strong>{(page - 1) * PAGE_SIZE + 1}</strong>–
+                <strong>{Math.min(page * PAGE_SIZE, count)}</strong> of{" "}
+                <strong>{count}</strong> teachers
+              </small>
+
+              <nav>
+                <ul className="pagination pagination-sm mb-0">
+                  <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
+                    <button className="page-link" onClick={() => setPage(1)} disabled={page === 1} title="First">«</button>
+                  </li>
+                  <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
+                    <button className="page-link" onClick={() => setPage((p) => p - 1)} disabled={page === 1}>‹</button>
+                  </li>
+
+                  {page > 3 && <li className="page-item disabled"><span className="page-link">…</span></li>}
+
+                  {getPageNumbers().map((n) => (
+                    <li key={n} className={`page-item ${n === page ? "active" : ""}`}>
+                      <button className="page-link" onClick={() => setPage(n)}>{n}</button>
+                    </li>
+                  ))}
+
+                  {page < totalPages - 2 && <li className="page-item disabled"><span className="page-link">…</span></li>}
+
+                  <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
+                    <button className="page-link" onClick={() => setPage((p) => p + 1)} disabled={page === totalPages}>›</button>
+                  </li>
+                  <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
+                    <button className="page-link" onClick={() => setPage(totalPages)} disabled={page === totalPages} title="Last">»</button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          )}
         </div>
       </div>
 
@@ -237,7 +314,6 @@ export function TeacherForm() {
     }
   };
 
-  // ✅ Pass form + set as props instead of closing over them
   const fieldProps = { form, set };
 
   return (
@@ -250,9 +326,7 @@ export function TeacherForm() {
         ]}
       />
 
-      {error && (
-        <AlertMessage type="danger" message={error} onClose={() => setError("")} />
-      )}
+      {error && <AlertMessage type="danger" message={error} onClose={() => setError("")} />}
 
       <div className="card">
         <div className="card-header">
@@ -262,7 +336,6 @@ export function TeacherForm() {
         </div>
         <div className="card-body">
           <form onSubmit={handleSubmit}>
-
             <div className="form-section-label">Account Information</div>
             <div className="row">
               <Field label="First Name" name="first_name" required {...fieldProps} />
@@ -288,15 +361,11 @@ export function TeacherForm() {
                 {loading && <span className="spinner-border spinner-border-sm me-2" />}
                 {isEdit ? "Update Teacher" : "Add Teacher"}
               </button>
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm"
-                onClick={() => navigate("/admin/teachers")}
-              >
+              <button type="button" className="btn btn-outline-secondary btn-sm"
+                onClick={() => navigate("/admin/teachers")}>
                 Cancel
               </button>
             </div>
-
           </form>
         </div>
       </div>
@@ -384,7 +453,6 @@ export function SubjectAllocation() {
         onClose={() => setMsg({ type: "", text: "" })}
       />
 
-      {/* Create allocation form */}
       <div className="card mb-3">
         <div className="card-header">
           <h5 className="card-title mb-0">Assign Teacher → Subject → Classroom</h5>
@@ -419,7 +487,6 @@ export function SubjectAllocation() {
         </div>
       </div>
 
-      {/* Allocations table */}
       <div className="card">
         <div className="card-header">
           <h5 className="card-title mb-0">Current Allocations</h5>
