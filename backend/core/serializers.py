@@ -352,6 +352,7 @@ class StudentCreateSerializer(serializers.ModelSerializer):
         required=False,
         help_text="Defaults to admission_number if not provided.",
     )
+    gender = serializers.ChoiceField(choices=Student.Gender.choices)
 
     class Meta:
         model = Student

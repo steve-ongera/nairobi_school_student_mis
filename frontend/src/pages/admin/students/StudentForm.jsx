@@ -13,6 +13,34 @@ const INITIAL = {
   dormitory: "", bed_number: "", blood_group: "", medical_conditions: "",
 };
 
+// ✅ Field is defined OUTSIDE StudentForm so it never remounts on re-render
+const Field = ({ label, name, type = "text", options, required = false, form, set }) => (
+  <div className="col-md-6 mb-3">
+    <label className="form-label fw-600">{label}{required && " *"}</label>
+    {options ? (
+      <select
+        className="form-select"
+        value={form[name]}
+        onChange={(e) => set(name, e.target.value)}
+        required={required}
+      >
+        <option value="">— Select —</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    ) : (
+      <input
+        type={type}
+        className="form-control"
+        value={form[name]}
+        onChange={(e) => set(name, e.target.value)}
+        required={required}
+      />
+    )}
+  </div>
+);
+
 export default function StudentForm() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -24,15 +52,13 @@ export default function StudentForm() {
   const isEdit = Boolean(id);
 
   useEffect(() => {
-    // Load classrooms with proper error handling
     const loadClassrooms = async () => {
       try {
         const response = await getClassrooms();
-        // Handle different response structures
         let classroomsData = [];
         if (response.data) {
-          classroomsData = Array.isArray(response.data) 
-            ? response.data 
+          classroomsData = Array.isArray(response.data)
+            ? response.data
             : (response.data.results || response.data.data || []);
         } else if (Array.isArray(response)) {
           classroomsData = response;
@@ -40,7 +66,6 @@ export default function StudentForm() {
           classroomsData = response.results;
         }
         setClassrooms(classroomsData);
-        console.log("Loaded classrooms:", classroomsData); // Debug log
       } catch (err) {
         console.error("Failed to load classrooms:", err);
         setClassrooms([]);
@@ -49,14 +74,13 @@ export default function StudentForm() {
 
     loadClassrooms();
 
-    // Load forms if needed
     const loadForms = async () => {
       try {
         const response = await getForms();
         let formsData = [];
         if (response.data) {
-          formsData = Array.isArray(response.data) 
-            ? response.data 
+          formsData = Array.isArray(response.data)
+            ? response.data
             : (response.data.results || []);
         }
         setForms(formsData);
@@ -67,7 +91,6 @@ export default function StudentForm() {
     };
     loadForms();
 
-    // Load student data if editing
     if (isEdit) {
       getStudent(id).then((r) => {
         const s = r.data;
@@ -124,40 +147,15 @@ export default function StudentForm() {
     }
   };
 
-  const Field = ({ label, name, type = "text", options, required = false }) => (
-    <div className="col-md-6 mb-3">
-      <label className="form-label fw-600">{label}{required && " *"}</label>
-      {options ? (
-        <select
-          className="form-select"
-          value={form[name]}
-          onChange={(e) => set(name, e.target.value)}
-          required={required}
-        >
-          <option value="">— Select —</option>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={type}
-          className="form-control"
-          value={form[name]}
-          onChange={(e) => set(name, e.target.value)}
-          required={required}
-        />
-      )}
-    </div>
-  );
-
-  // Safely map classrooms with check
-  const classroomOptions = Array.isArray(classrooms) 
+  const classroomOptions = Array.isArray(classrooms)
     ? classrooms.map((c) => ({
         value: c.id,
         label: `${c.stream_display || c.name || c.stream} – ${c.academic_year_display || c.academic_year || ""}`,
       }))
     : [];
+
+  // ✅ Shared props passed down to every Field
+  const fieldProps = { form, set };
 
   return (
     <>
@@ -178,10 +176,10 @@ export default function StudentForm() {
             {/* Account */}
             <div className="row">
               <h6 className="text-primary-dark fw-700 mb-3 mt-2">Account Information</h6>
-              <Field label="First Name" name="first_name" required />
-              <Field label="Last Name" name="last_name" required />
-              <Field label="Email Address" name="email" type="email" required={!isEdit} />
-              <Field label="Phone Number" name="phone" type="tel" />
+              <Field label="First Name" name="first_name" required {...fieldProps} />
+              <Field label="Last Name" name="last_name" required {...fieldProps} />
+              <Field label="Email Address" name="email" type="email" required={!isEdit} {...fieldProps} />
+              <Field label="Phone Number" name="phone" type="tel" {...fieldProps} />
             </div>
 
             <hr />
@@ -189,25 +187,28 @@ export default function StudentForm() {
             {/* Student */}
             <div className="row">
               <h6 className="text-primary-dark fw-700 mb-3">Student Details</h6>
-              <Field label="Admission Number" name="admission_number" required />
-              <Field label="Date of Birth" name="date_of_birth" type="date" />
+              <Field label="Admission Number" name="admission_number" required {...fieldProps} />
+              <Field label="Date of Birth" name="date_of_birth" type="date" {...fieldProps} />
               <Field
                 label="Gender"
                 name="gender"
                 options={[
-                  { value: "male", label: "Male" },
-                  { value: "female", label: "Female" },
+                  { value: "M", label: "Male" },
+                  { value: "F", label: "Female" },
+                  { value: "O", label: "Other" },
                 ]}
                 required
+                {...fieldProps}
               />
-              <Field label="Nationality" name="nationality" />
-              <Field label="KCPE Index No" name="kcpe_index_number" />
-              <Field label="KCPE Marks" name="kcpe_marks" type="number" />
-              <Field label="Admission Date" name="admission_date" type="date" required />
+              <Field label="Nationality" name="nationality" {...fieldProps} />
+              <Field label="KCPE Index No" name="kcpe_index_number" {...fieldProps} />
+              <Field label="KCPE Marks" name="kcpe_marks" type="number" {...fieldProps} />
+              <Field label="Admission Date" name="admission_date" type="date" required {...fieldProps} />
               <Field
                 label="Classroom"
                 name="current_classroom"
                 options={classroomOptions}
+                {...fieldProps}
               />
               <Field
                 label="Boarding Status"
@@ -217,6 +218,7 @@ export default function StudentForm() {
                   { value: "boarding", label: "Boarding" },
                   { value: "day_boarding", label: "Day Boarding" },
                 ]}
+                {...fieldProps}
               />
             </div>
 
@@ -226,8 +228,8 @@ export default function StudentForm() {
             {form.boarding_status !== "day" && (
               <div className="row">
                 <h6 className="text-primary-dark fw-700 mb-3">Boarding Details</h6>
-                <Field label="Dormitory" name="dormitory" />
-                <Field label="Bed Number" name="bed_number" />
+                <Field label="Dormitory" name="dormitory" {...fieldProps} />
+                <Field label="Bed Number" name="bed_number" {...fieldProps} />
               </div>
             )}
 
@@ -238,6 +240,7 @@ export default function StudentForm() {
                 label="Blood Group"
                 name="blood_group"
                 options={["A+","A-","B+","B-","O+","O-","AB+","AB-"].map((b) => ({ value: b, label: b }))}
+                {...fieldProps}
               />
               <div className="col-12 mb-3">
                 <label className="form-label fw-600">Medical Conditions / Allergies</label>
