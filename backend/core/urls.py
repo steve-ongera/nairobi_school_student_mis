@@ -61,7 +61,7 @@ router.register(r"academics/subjects", SubjectViewSet, basename="subject")
 
 # Teachers
 router.register(r"teachers", TeacherViewSet, basename="teacher")
-router.register(r"teachers/allocations", TeacherSubjectAllocationViewSet, basename="teacher-allocation")
+router.register(r"allocations", TeacherSubjectAllocationViewSet, basename="teacher-allocation")
 
 # Students
 router.register(r"parents", ParentViewSet, basename="parent")

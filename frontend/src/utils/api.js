@@ -75,9 +75,10 @@ export const deleteTeacher = (id) => api.delete(`/teachers/${id}/`);
 export const getTeacherAllocations = (id) => api.get(`/teachers/${id}/allocations/`);
 export const getMyAllocations = () => api.get("/teachers/my_allocations/");
 
-export const getAllocations = (params) => api.get("/teachers/allocations/", { params });
-export const createAllocation = (data) => api.post("/teachers/allocations/", data);
-export const deleteAllocation = (id) => api.delete(`/teachers/allocations/${id}/`);
+export const getAllocations    = (params) => api.get("/allocations/", { params });
+export const createAllocation  = (data)  => api.post("/allocations/", data);
+export const deleteAllocation  = (id)    => api.delete(`/allocations/${id}/`);
+
 
 // ── STUDENTS ──────────────────────────────────────────────────────────────────
 export const getStudents = (params) => api.get("/students/", { params });
