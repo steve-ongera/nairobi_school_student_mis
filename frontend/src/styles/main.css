@@ -1574,3 +1574,71 @@ a:hover { color: var(--primary-dark); }
     padding: 8px 12px;
   }
 }
+
+
+/* Ensure mobile menu works properly */
+.mobile-menu-dropdown {
+  position: fixed;
+  top: var(--header-height, 70px);
+  right: -100%;
+  width: 280px;
+  height: calc(100vh - var(--header-height, 70px));
+  background: var(--bg-card);
+  box-shadow: -5px 0 20px rgba(0,0,0,0.1);
+  z-index: 1040;
+  transition: right 0.3s ease;
+  overflow-y: auto;
+}
+
+.mobile-menu-dropdown.open {
+  right: 0;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-dropdown {
+    width: 100%;
+  }
+}
+
+/* Ensure dropdowns work without Bootstrap JS */
+.dropdown-menu {
+  display: none;
+}
+
+.dropdown-menu.show {
+  display: block;
+}
+
+/* Ensure proper z-index for navbar */
+.header {
+  z-index: 1030;
+}
+
+/* Mobile search overlay */
+.mobile-search-overlay {
+  position: fixed;
+  top: var(--header-height, 70px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  padding: 15px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  z-index: 1020;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ensure body doesn't scroll when mobile menu is open */
+body.mobile-menu-open {
+  overflow: hidden;
+}
