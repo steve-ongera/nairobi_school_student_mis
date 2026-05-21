@@ -45,7 +45,14 @@ export default function StudentDashboard() {
           margin-bottom: 24px;
           position: relative;
           overflow: hidden;
+          transition: all var(--transition-base);
         }
+        
+        .dash-banner:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-lg);
+        }
+        
         .dash-banner::before {
           content: '';
           position: absolute;
@@ -55,6 +62,7 @@ export default function StudentDashboard() {
           top: -80px; right: -60px;
           pointer-events: none;
         }
+        
         .dash-banner__avatar {
           width: 56px; height: 56px;
           border-radius: 50%;
@@ -65,24 +73,29 @@ export default function StudentDashboard() {
           flex-shrink: 0;
           border: 2px solid rgba(255,255,255,0.3);
         }
+        
         .dash-banner__name {
           font-size: 17px; font-weight: 700;
           color: #fff; margin: 0 0 3px;
         }
+        
         .dash-banner__sub {
           font-size: 13px;
           color: rgba(255,255,255,0.75);
           margin: 0;
         }
+        
         .dash-banner__grade {
           margin-left: auto;
           text-align: center;
           flex-shrink: 0;
         }
+        
         .dash-banner__grade-val {
           font-size: 34px; font-weight: 800;
           color: #fff; line-height: 1;
         }
+        
         .dash-banner__grade-label {
           font-size: 11px;
           color: rgba(255,255,255,0.7);
@@ -97,6 +110,7 @@ export default function StudentDashboard() {
           border-collapse: collapse;
           font-size: 13px;
         }
+        
         .results-table thead th {
           text-align: left;
           padding: 10px 14px;
@@ -109,12 +123,14 @@ export default function StudentDashboard() {
           border-top: 1px solid var(--border);
           border-bottom: 1px solid var(--border);
         }
+        
         .results-table tbody td {
           padding: 11px 14px;
           border-bottom: 1px solid var(--border-light);
           vertical-align: middle;
           color: var(--text-secondary);
         }
+        
         .results-table tbody tr:last-child td { border-bottom: none; }
         .results-table tbody tr:hover { background: #fafbfc; }
 
@@ -126,16 +142,19 @@ export default function StudentDashboard() {
           margin-bottom: 4px;
           overflow: hidden;
         }
+        
         .marks-bar__fill {
           height: 100%;
           border-radius: 4px;
           background: linear-gradient(90deg, var(--primary), var(--accent));
         }
+        
         .marks-value {
           font-weight: 700;
           color: var(--text-primary);
           font-size: 13px;
         }
+        
         .remarks-text {
           font-size: 12px;
           color: var(--text-muted);
@@ -149,194 +168,333 @@ export default function StudentDashboard() {
           padding: 10px 0;
           border-bottom: 1px solid var(--border-light);
         }
+        
         .invoice-row:last-of-type { border-bottom: none; }
+        
         .invoice-label {
           font-size: 13px;
           color: var(--text-muted);
         }
+        
         .invoice-value {
           font-size: 15px;
           font-weight: 700;
         }
+
+        /* ── Mobile Responsive Styles ── */
+        @media (max-width: 768px) {
+          .dash-banner {
+            flex-direction: column;
+            text-align: center;
+            padding: 20px;
+          }
+          
+          .dash-banner__grade {
+            margin-left: 0;
+            margin-top: 10px;
+          }
+          
+          .dash-banner__grade-val {
+            font-size: 28px;
+          }
+          
+          .results-table {
+            font-size: 11px;
+          }
+          
+          .results-table thead th,
+          .results-table tbody td {
+            padding: 8px 10px;
+          }
+          
+          .marks-bar {
+            width: 50px;
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .dash-banner__avatar {
+            width: 48px;
+            height: 48px;
+            font-size: 18px;
+          }
+          
+          .dash-banner__name {
+            font-size: 15px;
+          }
+          
+          .dash-banner__sub {
+            font-size: 11px;
+          }
+          
+          .results-table {
+            font-size: 10px;
+          }
+          
+          .results-table thead th,
+          .results-table tbody td {
+            padding: 6px 8px;
+          }
+          
+          .invoice-value {
+            font-size: 13px;
+          }
+        }
+        
+        /* Animation for stats cards */
+        .stat-card-animation {
+          animation: fadeInUp 0.5s ease;
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
       `}</style>
 
-      <PageTitle title="My Dashboard" breadcrumbs={[{ label: "Dashboard" }]} />
+      <div className="student-dashboard-wrapper">
+        <PageTitle 
+          title="My Dashboard" 
+          breadcrumbs={[{ label: "Dashboard" }]} 
+        />
 
-      {/* ── Welcome banner ── */}
-      <div className="dash-banner">
-        <div className="dash-banner__avatar">
-          {(student?.full_name || "S").charAt(0).toUpperCase()}
-        </div>
-        <div>
-          <p className="dash-banner__name">{student?.full_name}</p>
-          <p className="dash-banner__sub">
-            {student?.admission_number} • {student?.current_classroom?.stream_display || "—"}
-          </p>
-        </div>
-        {latest_mean_grade && (
-          <div className="dash-banner__grade">
-            <div className="dash-banner__grade-val">{latest_mean_grade}</div>
-            <div className="dash-banner__grade-label">Mean Grade</div>
+        {/* ── Welcome banner ── */}
+        <div className="dash-banner">
+          <div className="dash-banner__avatar">
+            {(student?.full_name || "S").charAt(0).toUpperCase()}
           </div>
-        )}
-      </div>
-
-      {/* ── Stat cards ── */}
-      <div className="row">
-        <div className="col-md-3">
-          <StatCard
-            title="Fee Balance"
-            value={formatCurrency(fee_balance)}
-            icon="bi-cash-coin"
-            color={parseFloat(fee_balance) > 0 ? "danger" : "success"}
-            subtitle={parseFloat(fee_balance) > 0 ? "Outstanding" : "Cleared"}
-          />
-        </div>
-        <div className="col-md-3">
-          <StatCard
-            title="Mean Grade"
-            value={latest_mean_grade || "—"}
-            icon="bi-award"
-            color="primary"
-            subtitle={latest_exam?.name || "Latest exam"}
-          />
-        </div>
-        <div className="col-md-3">
-          <StatCard
-            title="Attendance"
-            value={`${attendance_this_term?.attendance_percentage ?? "—"}%`}
-            icon="bi-calendar-check"
-            color={attendance_this_term?.attendance_percentage >= 80 ? "success" : "warning"}
-            subtitle="This term"
-          />
-        </div>
-        <div className="col-md-3">
-          <StatCard
-            title="Days Present"
-            value={`${attendance_this_term?.present_days ?? "—"} / ${attendance_this_term?.total_days ?? "—"}`}
-            icon="bi-person-check"
-            color="success"
-          />
-        </div>
-      </div>
-
-      <div className="row">
-        {/* ── Recent Results ── */}
-        <div className="col-lg-7">
-          <div className="card">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h5 className="card-title mb-0">
-                Recent Results
-                {latest_exam && (
-                  <span className="ms-2 count-chip">{latest_exam.name}</span>
-                )}
-              </h5>
-              <Link to="/student/results" className="btn btn-outline-primary btn-sm">
-                View All
-              </Link>
-            </div>
-            <div className="card-body p-0">
-              {recent_results?.length ? (
-                <div className="table-responsive">
-                  <table className="results-table">
-                    <thead>
-                      <tr>
-                        <th>Subject</th>
-                        <th>Marks</th>
-                        <th>Grade</th>
-                        <th>Points</th>
-                        <th>Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recent_results.map((r) => (
-                        <tr key={r.id}>
-                          <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                            {r.subject_name}
-                          </td>
-                          <td>
-                            <div className="marks-bar">
-                              <div className="marks-bar__fill" style={{ width: `${r.marks}%` }} />
-                            </div>
-                            <span className="marks-value">{r.marks}</span>
-                          </td>
-                          <td><GradeBadge grade={r.grade} /></td>
-                          <td>{r.points ?? "—"}</td>
-                          <td><span className="remarks-text">{r.remarks || "—"}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="empty-message">
-                  <i className="bi bi-journal-x fs-1 d-block mb-2" />
-                  <p>No published results yet.</p>
-                </div>
-              )}
-            </div>
+          <div>
+            <p className="dash-banner__name">{student?.full_name}</p>
+            <p className="dash-banner__sub">
+              {student?.admission_number} • {student?.current_classroom?.stream_display || "—"}
+            </p>
           </div>
-        </div>
-
-        {/* ── Radar + Invoice ── */}
-        <div className="col-lg-5">
-          {radarData?.length > 2 && (
-            <div className="card">
-              <div className="card-header">
-                <h5 className="card-title mb-0">Performance Radar</h5>
-              </div>
-              <div className="card-body">
-                <ResponsiveContainer width="100%" height={200}>
-                  <RadarChart data={radarData}>
-                    <PolarGrid stroke="var(--border)" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
-                    <Radar
-                      dataKey="marks"
-                      stroke="var(--primary)"
-                      fill="var(--primary)"
-                      fillOpacity={0.2}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: 10,
-                        border: "1px solid var(--border)",
-                        fontSize: 12,
-                      }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
+          {latest_mean_grade && (
+            <div className="dash-banner__grade">
+              <div className="dash-banner__grade-val">{latest_mean_grade}</div>
+              <div className="dash-banner__grade-label">Mean Grade</div>
             </div>
           )}
+        </div>
 
-          {current_invoice && (
-            <div className="card">
-              <div className="card-header">
-                <h5 className="card-title mb-0">Current Term Invoice</h5>
-              </div>
-              <div className="card-body">
-                <div className="invoice-row">
-                  <span className="invoice-label">Total</span>
-                  <span className="invoice-value">{formatCurrency(current_invoice.total_amount)}</span>
-                </div>
-                <div className="invoice-row">
-                  <span className="invoice-label">Paid</span>
-                  <span className="invoice-value" style={{ color: "var(--success)" }}>
-                    {formatCurrency(current_invoice.amount_paid)}
-                  </span>
-                </div>
-                <div className="invoice-row">
-                  <span className="invoice-label">Balance</span>
-                  <span className="invoice-value" style={{ color: "var(--danger)" }}>
-                    {formatCurrency(current_invoice.balance)}
-                  </span>
-                </div>
-                <Link to="/student/fees/pay" className="btn btn-primary btn-sm w-100 mt-3">
-                  <i className="bi bi-phone" /> Pay via MPESA
+        {/* ── Stat cards ── */}
+        <div className="row g-3 g-md-4">
+          <div className="col-sm-6 col-md-3">
+            <div className="stat-card-animation" style={{ animationDelay: '0.1s' }}>
+              <StatCard
+                title="Fee Balance"
+                value={formatCurrency(fee_balance)}
+                icon="bi-cash-coin"
+                color={parseFloat(fee_balance) > 0 ? "danger" : "success"}
+                subtitle={parseFloat(fee_balance) > 0 ? "Outstanding" : "Cleared"}
+              />
+            </div>
+          </div>
+          <div className="col-sm-6 col-md-3">
+            <div className="stat-card-animation" style={{ animationDelay: '0.2s' }}>
+              <StatCard
+                title="Mean Grade"
+                value={latest_mean_grade || "—"}
+                icon="bi-award"
+                color="primary"
+                subtitle={latest_exam?.name || "Latest exam"}
+              />
+            </div>
+          </div>
+          <div className="col-sm-6 col-md-3">
+            <div className="stat-card-animation" style={{ animationDelay: '0.3s' }}>
+              <StatCard
+                title="Attendance"
+                value={`${attendance_this_term?.attendance_percentage ?? "—"}%`}
+                icon="bi-calendar-check"
+                color={attendance_this_term?.attendance_percentage >= 80 ? "success" : "warning"}
+                subtitle="This term"
+              />
+            </div>
+          </div>
+          <div className="col-sm-6 col-md-3">
+            <div className="stat-card-animation" style={{ animationDelay: '0.4s' }}>
+              <StatCard
+                title="Days Present"
+                value={`${attendance_this_term?.present_days ?? "—"} / ${attendance_this_term?.total_days ?? "—"}`}
+                icon="bi-person-check"
+                color="success"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="row g-3 g-md-4 mt-2">
+          {/* ── Recent Results ── */}
+          <div className="col-lg-7">
+            <div className="card h-100">
+              <div className="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <h5 className="card-title mb-0">
+                  Recent Results
+                  {latest_exam && (
+                    <span className="ms-2 count-chip">{latest_exam.name}</span>
+                  )}
+                </h5>
+                <Link to="/student/results" className="btn btn-outline-primary btn-sm">
+                  View All <i className="bi bi-arrow-right ms-1"></i>
                 </Link>
               </div>
+              <div className="card-body p-0">
+                {recent_results?.length ? (
+                  <div className="table-responsive">
+                    <table className="results-table">
+                      <thead>
+                        <tr>
+                          <th>Subject</th>
+                          <th>Marks</th>
+                          <th>Grade</th>
+                          <th>Points</th>
+                          <th>Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recent_results.map((r, index) => (
+                          <tr key={r.id}>
+                            <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                              {r.subject_name}
+                            </td>
+                            <td>
+                              <div className="marks-bar">
+                                <div 
+                                  className="marks-bar__fill" 
+                                  style={{ width: `${Math.min(r.marks, 100)}%` }} 
+                                />
+                              </div>
+                              <span className="marks-value">{r.marks}</span>
+                            </td>
+                            <td><GradeBadge grade={r.grade} /></td>
+                            <td>{r.points ?? "—"}</td>
+                            <td><span className="remarks-text">{r.remarks || "—"}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty-message">
+                    <i className="bi bi-journal-x fs-1 d-block mb-2" />
+                    <p>No published results yet.</p>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          </div>
+
+          {/* ── Radar + Invoice ── */}
+          <div className="col-lg-5">
+            {radarData?.length > 2 && (
+              <div className="card mb-3">
+                <div className="card-header">
+                  <h5 className="card-title mb-0">Performance Radar</h5>
+                </div>
+                <div className="card-body">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <RadarChart data={radarData}>
+                      <PolarGrid stroke="var(--border)" />
+                      <PolarAngleAxis 
+                        dataKey="subject" 
+                        tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+                      />
+                      <Radar
+                        dataKey="marks"
+                        stroke="var(--primary)"
+                        fill="var(--primary)"
+                        fillOpacity={0.2}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: 10,
+                          border: "1px solid var(--border)",
+                          fontSize: 12,
+                          background: "var(--bg-card)",
+                          color: "var(--text-primary)"
+                        }}
+                        formatter={(value) => [`${value} marks`, 'Score']}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            {current_invoice && (
+              <div className="card">
+                <div className="card-header">
+                  <h5 className="card-title mb-0">Current Term Invoice</h5>
+                </div>
+                <div className="card-body">
+                  <div className="invoice-row">
+                    <span className="invoice-label">Total Fees</span>
+                    <span className="invoice-value">{formatCurrency(current_invoice.total_amount)}</span>
+                  </div>
+                  <div className="invoice-row">
+                    <span className="invoice-label">Amount Paid</span>
+                    <span className="invoice-value" style={{ color: "var(--success)" }}>
+                      {formatCurrency(current_invoice.amount_paid)}
+                    </span>
+                  </div>
+                  <div className="invoice-row">
+                    <span className="invoice-label">Balance Due</span>
+                    <span className="invoice-value" style={{ color: "var(--danger)" }}>
+                      {formatCurrency(current_invoice.balance)}
+                    </span>
+                  </div>
+                  
+                  {parseFloat(current_invoice.balance) > 0 && (
+                    <div className="mt-3">
+                      <div className="progress mb-2" style={{ height: '8px' }}>
+                        <div 
+                          className="progress-bar bg-success" 
+                          style={{ 
+                            width: `${(current_invoice.amount_paid / current_invoice.total_amount) * 100}%`,
+                            background: 'linear-gradient(90deg, var(--success), var(--primary))'
+                          }}
+                        />
+                      </div>
+                      <small className="text-muted">
+                        {Math.round((current_invoice.amount_paid / current_invoice.total_amount) * 100)}% paid
+                      </small>
+                    </div>
+                  )}
+                  
+                  <Link to="/student/fees/pay" className="btn btn-primary w-100 mt-3">
+                    <i className="bi bi-phone me-2" /> Pay via MPESA
+                  </Link>
+                </div>
+              </div>
+            )}
+            
+            {/* Quick Links Section */}
+            <div className="card mt-3">
+              <div className="card-header">
+                <h5 className="card-title mb-0">Quick Links</h5>
+              </div>
+              <div className="card-body">
+                <div className="d-grid gap-2">
+                  <Link to="/student/timetable" className="btn btn-outline-primary">
+                    <i className="bi bi-calendar-week me-2"></i> View Timetable
+                  </Link>
+                  <Link to="/student/exams" className="btn btn-outline-primary">
+                    <i className="bi bi-journal-bookmark-fill me-2"></i> Upcoming Exams
+                  </Link>
+                  <Link to="/student/library" className="btn btn-outline-primary">
+                    <i className="bi bi-book me-2"></i> Library Resources
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </>

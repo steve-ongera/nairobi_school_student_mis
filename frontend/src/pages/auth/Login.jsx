@@ -62,6 +62,13 @@ export default function Login() {
           margin-bottom: 36px;
         }
 
+        .lp-logo img {
+          width: 80px;
+          height: 80px;
+          object-fit: contain;
+          margin-bottom: 16px;
+        }
+
         .lp-logo-icon {
           width: 56px;
           height: 56px;
@@ -248,9 +255,7 @@ export default function Login() {
 
           {/* Logo & Heading */}
           <div className="lp-logo">
-            <div className="lp-logo-icon">
-              <i className="bi bi-mortarboard-fill" />
-            </div>
+            <img src="/logo.jpg" alt="SchoolMIS Logo" />
             <h1>SchoolMIS</h1>
             <p>Sign in to access your dashboard</p>
           </div>
