@@ -1,10 +1,10 @@
-# 🏫 School MIS – React + Vite Frontend
+# HighSchool/ CBC  Management Information System – React + Vite Frontend
 
 Kenya High School Management Information System frontend built with **React 18 + Vite**, styled with the **NiceAdmin Bootstrap 5** theme. Multi-role portal system for Admin, Teacher, Student, and Finance users.
 
 ---
 
-## 📁 Complete File Structure (65 files)
+## Complete File Structure (65 files)
 
 ```
 school-mis/
@@ -141,7 +141,7 @@ school-mis/
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ```bash
 cd school-mis
@@ -166,7 +166,7 @@ Make sure the Django backend is running on `http://localhost:8000`.
 
 ---
 
-## 📦 Dependencies
+##  Dependencies
 
 | Package | Purpose |
 |---|---|
@@ -181,7 +181,7 @@ Make sure the Django backend is running on `http://localhost:8000`.
 
 ---
 
-## 🗂️ Key Patterns
+##  Key Patterns
 
 **API calls** — all in `src/utils/api.js`. Every endpoint from `core/urls.py` has a matching function.
 
