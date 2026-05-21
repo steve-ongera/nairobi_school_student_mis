@@ -154,7 +154,7 @@ Make sure the Django backend is running on `http://localhost:8000`.
 
 ---
 
-## 👥 Role → Portal Mapping
+##  Role → Portal Mapping
 
 | Role | Landing Page | Portal |
 |---|---|---|
