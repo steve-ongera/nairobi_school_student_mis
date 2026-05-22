@@ -1,56 +1,26 @@
+// src/components/common/index.jsx
 import { Link } from "react-router-dom";
 import { statusBadge, gradeClass } from "../../utils/formatters";
 
 // ── PageTitle ─────────────────────────────────────────────────────────────────
 export function PageTitle({ title, breadcrumbs = [] }) {
   return (
-    <div className="pagetitle">
-      <h1>{title}</h1>
-      <nav>
-        <ol className="breadcrumb">
-          <li className="breadcrumb-item">
-            <Link to="/">Home</Link>
-          </li>
-          {breadcrumbs.map((b, i) => (
-            <li
-              key={i}
-              className={`breadcrumb-item ${i === breadcrumbs.length - 1 ? "active" : ""}`}
-            >
-              {b.to ? <Link to={b.to}>{b.label}</Link> : b.label}
-            </li>
-          ))}
-        </ol>
-      </nav>
-    </div>
-  );
-}
-
-// ── StatCard ──────────────────────────────────────────────────────────────────
-export function StatCard({ title, value, icon, color = "primary", subtitle }) {
-  const colorMap = {
-    primary: { bg: "#f6f6fe", iconColor: "#4154f1" },
-    success: { bg: "#e0f8e9", iconColor: "#2eca6a" },
-    warning: { bg: "#ffecdf", iconColor: "#ff771d" },
-    danger: { bg: "#fde8e8", iconColor: "#dc3545" },
-  };
-  const c = colorMap[color] || colorMap.primary;
-  return (
-    <div className="card info-card">
-      <div className="card-body">
-        <h5 className="card-title">{title}</h5>
-        <div className="d-flex align-items-center">
-          <div
-            className="card-icon rounded-circle d-flex align-items-center justify-content-center"
-            style={{ backgroundColor: c.bg, color: c.iconColor }}
+    <div className="page-header">
+      <ol className="breadcrumb">
+        <li className="breadcrumb__item">
+          <Link to="/">Home</Link>
+        </li>
+        {breadcrumbs.map((b, i) => (
+          <li
+            key={i}
+            className={`breadcrumb__item${i === breadcrumbs.length - 1 ? " active" : ""}`}
           >
-            <i className={`bi ${icon}`} />
-          </div>
-          <div className="ps-3">
-            <h6>{value}</h6>
-            {subtitle && <span className="text-muted small">{subtitle}</span>}
-          </div>
-        </div>
-      </div>
+            <span className="breadcrumb__sep">/</span>
+            {b.to ? <Link to={b.to}>{b.label}</Link> : b.label}
+          </li>
+        ))}
+      </ol>
+      <h1 className="page-header__title">{title}</h1>
     </div>
   );
 }
@@ -58,9 +28,9 @@ export function StatCard({ title, value, icon, color = "primary", subtitle }) {
 // ── LoadingSpinner ────────────────────────────────────────────────────────────
 export function LoadingSpinner({ message = "Loading…" }) {
   return (
-    <div className="d-flex flex-column align-items-center justify-content-center py-5">
-      <div className="spinner-border text-primary" role="status" />
-      <p className="mt-3 text-muted">{message}</p>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 0" }}>
+      <div className="spinner" />
+      <p className="text-muted mt-3" style={{ marginTop: 16, fontSize: "var(--text-sm)" }}>{message}</p>
     </div>
   );
 }
@@ -68,11 +38,28 @@ export function LoadingSpinner({ message = "Loading…" }) {
 // ── AlertMessage ──────────────────────────────────────────────────────────────
 export function AlertMessage({ type = "info", message, onClose }) {
   if (!message) return null;
+
+  const iconMap = {
+    info:    "bi-info-circle-fill",
+    success: "bi-check-circle-fill",
+    warning: "bi-exclamation-triangle-fill",
+    danger:  "bi-x-circle-fill",
+  };
+
   return (
-    <div className={`alert alert-${type} alert-dismissible fade show`} role="alert">
-      {message}
+    <div className={`alert alert--${type}`} role="alert">
+      <i className={`bi ${iconMap[type] || "bi-info-circle-fill"}`} />
+      <div className="alert__body">
+        <p className="alert__text">{message}</p>
+      </div>
       {onClose && (
-        <button type="button" className="btn-close" onClick={onClose} />
+        <button
+          style={{ background: "none", border: "none", cursor: "pointer", marginLeft: "auto", padding: 4, opacity: 0.6 }}
+          onClick={onClose}
+          aria-label="Close"
+        >
+          <i className="bi bi-x-lg" style={{ fontSize: 13 }} />
+        </button>
       )}
     </div>
   );
@@ -81,26 +68,71 @@ export function AlertMessage({ type = "info", message, onClose }) {
 // ── EmptyState ────────────────────────────────────────────────────────────────
 export function EmptyState({ message = "No records found.", icon = "bi-inbox" }) {
   return (
-    <div className="text-center py-5">
-      <i className={`bi ${icon}`} style={{ fontSize: 48, color: "#aab7cf" }} />
-      <p className="mt-3 text-muted">{message}</p>
+    <div className="empty-state">
+      <div className="empty-state__icon">
+        <i className={`bi ${icon}`} />
+      </div>
+      <p className="empty-state__desc">{message}</p>
     </div>
   );
 }
 
-// ── Badge ─────────────────────────────────────────────────────────────────────
+// ── StatusBadge ───────────────────────────────────────────────────────────────
 export function StatusBadge({ status }) {
-  const color = statusBadge(status);
+  const colorMap = {
+    active:    "badge--success",
+    inactive:  "badge--default",
+    suspended: "badge--danger",
+    pending:   "badge--warning",
+    graduated: "badge--info",
+    expelled:  "badge--danger",
+  };
+  const cls = colorMap[status?.toLowerCase()] || "badge--default";
   return (
-    <span className={`badge bg-${color} text-capitalize`}>{status}</span>
+    <span className={`badge ${cls}`} style={{ textTransform: "capitalize" }}>
+      {status || "—"}
+    </span>
   );
 }
 
+// ── GradeBadge ────────────────────────────────────────────────────────────────
 export function GradeBadge({ grade }) {
   return (
-    <span className={`badge px-2 py-1 ${gradeClass(grade)}`} style={{ fontSize: 13 }}>
+    <span className={`badge badge--primary ${gradeClass(grade)}`} style={{ fontSize: 13 }}>
       {grade || "—"}
     </span>
+  );
+}
+
+// ── StatCard ──────────────────────────────────────────────────────────────────
+export function StatCard({ title, value, icon, color = "blue", subtitle }) {
+  return (
+    <div className={`kpi-card kpi-card--${color}`}>
+      <div className="kpi-card__header">
+        <div className="kpi-card__icon">
+          <i className={`bi ${icon}`} />
+        </div>
+      </div>
+      <div className="kpi-card__value">{value}</div>
+      <div className="kpi-card__label">{title}</div>
+      {subtitle && <div className="kpi-card__meta">{subtitle}</div>}
+    </div>
+  );
+}
+
+// ── SearchBar ─────────────────────────────────────────────────────────────────
+export function SearchBar({ value, onChange, placeholder = "Search…" }) {
+  return (
+    <div className="search-box" style={{ maxWidth: 260 }}>
+      <i className="bi bi-search search-box__icon" />
+      <input
+        type="search"
+        className="search-box__input"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
   );
 }
 
@@ -108,66 +140,68 @@ export function GradeBadge({ grade }) {
 export function DataTable({ columns, data, loading, emptyMessage }) {
   if (loading) return <LoadingSpinner />;
   if (!data?.length) return <EmptyState message={emptyMessage} />;
+
   return (
-    <div className="table-responsive">
-      <table className="table table-hover table-bordered align-middle">
-        <thead className="table-light">
-          <tr>
-            {columns.map((col, i) => (
-              <th key={i} style={col.style}>{col.header}</th>
+    <table className="data-table">
+      <thead>
+        <tr>
+          {columns.map((col, i) => (
+            <th key={i} style={col.style}>{col.header}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((row, ri) => (
+          <tr key={row.id ?? ri}>
+            {columns.map((col, ci) => (
+              <td key={ci}>{col.render ? col.render(row) : row[col.key]}</td>
             ))}
           </tr>
-        </thead>
-        <tbody>
-          {data.map((row, ri) => (
-            <tr key={ri}>
-              {columns.map((col, ci) => (
-                <td key={ci}>{col.render ? col.render(row) : row[col.key]}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
-export function SearchBar({ value, onChange, placeholder = "Search…" }) {
-  return (
-    <input
-      type="text"
-      className="form-control"
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      style={{ maxWidth: 260 }}
-    />
-  );
-}
+// ── ConfirmDialog (pure CSS, no Bootstrap modal/backdrop) ─────────────────────
+export function ConfirmDialog({ show, title, message, onConfirm, onCancel, confirmLabel = "Confirm", confirmColor = "danger" }) {
+  if (!show) return null;
 
-// ── ConfirmDialog (Bootstrap modal) ───────────────────────────────────────────
-export function ConfirmDialog({ id, title, message, onConfirm, danger = true }) {
   return (
-    <div className="modal fade" id={id} tabIndex={-1}>
-      <div className="modal-dialog modal-sm">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">{title}</h5>
-            <button type="button" className="btn-close" data-bs-dismiss="modal" />
+    <div className="modal-overlay" onClick={onCancel}>
+      <div
+        className="modal confirm-dialog"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+      >
+        <div className="modal__header">
+          <h5 className="modal__title" id="confirm-title">{title}</h5>
+          <button className="modal__close" onClick={onCancel} aria-label="Close">
+            <i className="bi bi-x-lg" />
+          </button>
+        </div>
+
+        <div className="modal__body" style={{ textAlign: "center" }}>
+          <div className="confirm-icon confirm-icon--danger">
+            <i className="bi bi-exclamation-triangle-fill" />
           </div>
-          <div className="modal-body">
-            <p>{message}</p>
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-            <button
-              className={`btn btn-${danger ? "danger" : "primary"} btn-sm`}
-              data-bs-dismiss="modal"
-              onClick={onConfirm}
-            >
-              Confirm
-            </button>
-          </div>
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", margin: 0 }}>
+            {message}
+          </p>
+        </div>
+
+        <div className="modal__footer">
+          <button className="btn btn-secondary btn-sm" onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            className={`btn btn-${confirmColor} btn-sm`}
+            onClick={() => { onConfirm(); }}
+          >
+            {confirmLabel}
+          </button>
         </div>
       </div>
     </div>

@@ -2,48 +2,48 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Cell, PieChart, Pie, Legend, RadarChart, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis, Radar
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell,
 } from "recharts";
 import { getAdminDashboard } from "../../utils/api";
-import { formatCurrency, formatDateTime } from "../../utils/formatters";
+import { formatCurrency } from "../../utils/formatters";
 import { PageTitle, LoadingSpinner, AlertMessage } from "../../components/common";
 
-// ── Chart colours ─────────────────────────────────────────────────────────────
-const CHART_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#7c3aed", "#06b6d4", "#ec4899", "#14b8a6"];
+// ── Chart colours (match --brand / semantic palette) ──────────────────────────
+const CHART_COLORS = [
+  "#6366f1", "#22c55e", "#f59e0b", "#ef4444",
+  "#0ea5e9", "#14b8a6", "#ec4899", "#4338ca",
+];
 
-const customTooltip = {
+const chartTooltipStyle = {
   contentStyle: {
-    borderRadius: 12,
-    border: "1px solid var(--border)",
-    background: "rgba(255,255,255,0.98)",
-    boxShadow: "var(--shadow-lg)",
+    borderRadius: 8,
+    border: "1px solid var(--color-border)",
+    background: "var(--color-surface)",
+    boxShadow: "0 8px 24px -4px rgb(15 23 42 / 0.12)",
     fontSize: 12,
     padding: "10px 14px",
   },
-  labelStyle: { fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 },
-  itemStyle: { padding: "2px 0" },
+  labelStyle: { fontWeight: 700, color: "var(--color-text)", marginBottom: 4 },
 };
 
-// ── Quick actions config ───────────────────────────────────────────────────────
+// ── Quick actions ──────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-  { to: "/admin/students/new",              icon: "bi-person-plus",    label: "Admit Student" },
-  { to: "/admin/exams/new",                 icon: "bi-journal-plus",   label: "Create Exam" },
-  { to: "/admin/finance/invoices/generate", icon: "bi-receipt",        label: "Invoices" },
-  { to: "/admin/students/promote",          icon: "bi-arrow-up-circle",label: "Promote" },
-  { to: "/admin/teachers/new",              icon: "bi-person-badge",   label: "Add Teacher" },
-  { to: "/admin/attendance",                icon: "bi-calendar-check", label: "Attendance" },
-  { to: "/admin/finance/mpesa",             icon: "bi-phone",          label: "MPESA" },
-  { to: "/admin/settings/grading",          icon: "bi-gear",           label: "Settings" },
+  { to: "/admin/students/new",              icon: "bi-person-plus",     label: "Admit Student" },
+  { to: "/admin/exams/new",                 icon: "bi-journal-plus",    label: "Create Exam"   },
+  { to: "/admin/finance/invoices/generate", icon: "bi-receipt",         label: "Invoices"      },
+  { to: "/admin/students/promote",          icon: "bi-arrow-up-circle", label: "Promote"       },
+  { to: "/admin/teachers/new",              icon: "bi-person-badge",    label: "Add Teacher"   },
+  { to: "/admin/attendance",                icon: "bi-calendar-check",  label: "Attendance"    },
+  { to: "/admin/finance/mpesa",             icon: "bi-phone",           label: "MPESA"         },
+  { to: "/admin/settings/grading",          icon: "bi-gear",            label: "Settings"      },
 ];
 
-// ── Main component ─────────────────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [data,      setData]      = useState(null);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState("");
   const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
@@ -54,103 +54,105 @@ export default function AdminDashboard() {
   }, []);
 
   if (loading) return <LoadingSpinner message="Loading dashboard…" />;
-  if (error) return <AlertMessage type="danger" message={error} />;
-  if (!data) return null;
+  if (error)   return <AlertMessage type="danger" message={error} />;
+  if (!data)   return null;
 
   const collRate = parseFloat(data.collection_rate || 0);
 
-  // ── Derived stat cards from real API data ──────────────────────────────────
-  const statCards = [
+  // ── KPI cards ──────────────────────────────────────────────────────────────
+  const kpiCards = [
     {
-      label: "Active Students",
-      value: (data.active_students || 0).toLocaleString(),
-      icon: "bi-people-fill",
-      bg: "#dbeafe",
-      fg: "#2563eb",
+      label:    "Active Students",
+      value:    (data.active_students || 0).toLocaleString(),
+      icon:     "bi-people-fill",
+      color:    "blue",
       subtitle: "Enrolled this year",
     },
     {
-      label: "Teachers",
-      value: data.total_teachers || 0,
-      icon: "bi-person-badge-fill",
-      bg: "#d1fae5",
-      fg: "#10b981",
+      label:    "Teachers",
+      value:    data.total_teachers || 0,
+      icon:     "bi-person-badge-fill",
+      color:    "green",
       subtitle: "Active staff",
     },
     {
-      label: "Classrooms",
-      value: data.total_classrooms || 0,
-      icon: "bi-building",
-      bg: "#fed7aa",
-      fg: "#f59e0b",
+      label:    "Classrooms",
+      value:    data.total_classrooms || 0,
+      icon:     "bi-building",
+      color:    "amber",
       subtitle: "In use",
     },
     {
-      label: "Collection Rate",
-      value: `${collRate.toFixed(1)}%`,
-      icon: "bi-cash-coin",
-      bg: collRate >= 80 ? "#d1fae5" : collRate >= 60 ? "#fef3c7" : "#fee2e2",
-      fg: collRate >= 80 ? "#10b981" : collRate >= 60 ? "#f59e0b" : "#ef4444",
+      label:    "Collection Rate",
+      value:    `${collRate.toFixed(1)}%`,
+      icon:     "bi-cash-coin",
+      color:    collRate >= 80 ? "green" : collRate >= 60 ? "amber" : "red",
       subtitle: "Fee collection",
     },
   ];
 
-  // ── Payment method badge colour ────────────────────────────────────────────
-  const methodStyle = (method) => {
+  // ── Payment method pill style ──────────────────────────────────────────────
+  const methodClass = (method) => {
     const m = method?.toLowerCase();
-    if (m === "mpesa")  return { background: "#ecfdf5", color: "#10b981" };
-    if (m === "bank")   return { background: "#eff6ff", color: "#2563eb" };
-    return { background: "#fef3c7", color: "#f59e0b" }; // cash / other
+    if (m === "mpesa") return "pill--active";
+    if (m === "bank")  return "pill--day";
+    return "pill--boarding";
   };
 
   return (
     <>
       <PageTitle title="Dashboard" breadcrumbs={[{ label: "Dashboard" }]} />
 
-      {/* ── Welcome banner ── */}
+      {/* ── Welcome banner ─────────────────────────────────────────────────── */}
       <div
-        className="card"
+        className="card mb-6"
         style={{
-          background: "linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)",
+          background: "linear-gradient(135deg, var(--brand-800) 0%, var(--brand-500) 60%, var(--teal-500) 100%)",
           border: "none",
-          marginBottom: 28,
-          position: "relative",
           overflow: "hidden",
+          position: "relative",
         }}
       >
-        {/* decorative blob */}
-        <div
+        {/* decorative circle */}
+        <span
+          aria-hidden
           style={{
-            position: "absolute", top: "-50%", right: "-10%",
-            width: 280, height: 280,
-            background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)",
+            position: "absolute", top: "-60%", right: "-8%",
+            width: 300, height: 300,
+            background: "radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 70%)",
             borderRadius: "50%", pointerEvents: "none",
           }}
         />
         <div className="card-body" style={{ padding: "24px 32px", position: "relative", zIndex: 1 }}>
           <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div>
-              <h4 style={{ color: "white", fontWeight: 700, margin: 0 }}>Welcome back, Admin</h4>
-              <p style={{ color: "rgba(255,255,255,0.85)", margin: "4px 0 0", fontSize: 13 }}>
+              <h4 style={{ color: "white", fontWeight: 800, margin: 0, fontSize: "var(--text-2xl)" }}>
+                Welcome back, Admin
+              </h4>
+              <p style={{ color: "rgba(255,255,255,0.80)", margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
                 Here's what's happening with your school today.
               </p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-              <div
+              <span
                 style={{
-                  background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)",
-                  padding: "6px 16px", borderRadius: 40, fontSize: 13, color: "white",
+                  background: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)",
+                  padding: "6px 16px", borderRadius: "var(--radius-full)",
+                  fontSize: "var(--text-sm)", color: "white",
                   display: "flex", alignItems: "center", gap: 8,
                 }}
               >
                 <i className="bi bi-calendar-week" />
-                {new Date().toLocaleDateString("en-KE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              </div>
+                {new Date().toLocaleDateString("en-KE", {
+                  weekday: "long", year: "numeric", month: "long", day: "numeric",
+                })}
+              </span>
               {(data.current_academic_year || data.current_term) && (
-                <div
+                <span
                   style={{
-                    background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)",
-                    padding: "5px 14px", borderRadius: 10, fontSize: 12, color: "rgba(255,255,255,0.9)",
+                    background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)",
+                    padding: "5px 14px", borderRadius: "var(--radius)",
+                    fontSize: "var(--text-xs)", color: "rgba(255,255,255,0.9)",
                     display: "flex", alignItems: "center", gap: 8,
                   }}
                 >
@@ -161,281 +163,249 @@ export default function AdminDashboard() {
                       • {data.current_term?.name || `Term ${data.current_term?.term_number}`}
                     </span>
                   )}
-                </div>
+                </span>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Stat cards ── */}
-      <div className="row">
-        {statCards.map((item) => (
-          <div key={item.label} className="col-md-3">
-            <div className="card info-card">
-              <div className="card-body">
-                <h5 className="card-title">{item.label}</h5>
-                <div className="d-flex align-items-center">
-                  <div
-                    className="card-icon rounded-circle d-flex align-items-center justify-content-center"
-                    style={{ background: item.bg, color: item.fg }}
-                  >
-                    <i className={`bi ${item.icon}`} />
-                  </div>
-                  <div className="ps-3">
-                    <h6 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>{item.value}</h6>
-                    <small style={{ color: "var(--text-muted)", fontSize: 11 }}>{item.subtitle}</small>
-                  </div>
-                </div>
+      {/* ── KPI grid ───────────────────────────────────────────────────────── */}
+      <div className="kpi-grid">
+        {kpiCards.map((card) => (
+          <div key={card.label} className={`kpi-card kpi-card--${card.color}`}>
+            <div className="kpi-card__header">
+              <div className="kpi-card__icon">
+                <i className={`bi ${card.icon}`} />
               </div>
             </div>
+            <div className="kpi-card__value">{card.value}</div>
+            <div className="kpi-card__label">{card.label}</div>
+            <div className="kpi-card__meta">{card.subtitle}</div>
           </div>
         ))}
       </div>
 
-      {/* ── Tabs ── */}
-      <div className="card">
-        <div className="card-body" style={{ padding: "0 24px" }}>
-          <ul className="nav-tabs-custom">
+      {/* ── Tabs ───────────────────────────────────────────────────────────── */}
+      <div className="card mb-5">
+        <div className="card-body" style={{ padding: "0 var(--space-6)" }}>
+          <div className="tabs">
             {[
-              { key: "overview",  icon: "bi-speedometer2",         label: "Overview" },
-              { key: "finance",   icon: "bi-cash-stack",            label: "Finance" },
-              { key: "academics", icon: "bi-journal-bookmark-fill", label: "Academics" },
+              { key: "overview",  icon: "bi-speedometer2",          label: "Overview"  },
+              { key: "finance",   icon: "bi-cash-stack",             label: "Finance"   },
+              { key: "academics", icon: "bi-journal-bookmark-fill",  label: "Academics" },
             ].map((tab) => (
-              <li key={tab.key}>
-                <button
-                  className={`nav-link ${activeTab === tab.key ? "active" : ""}`}
-                  onClick={() => setActiveTab(tab.key)}
-                >
-                  <i className={`bi ${tab.icon}`} style={{ marginRight: 6 }} />
-                  {tab.label}
-                </button>
-              </li>
+              <button
+                key={tab.key}
+                className={`tab-item${activeTab === tab.key ? " active" : ""}`}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <i className={`bi ${tab.icon}`} />
+                {tab.label}
+              </button>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
 
-      {/* ── Tab: Overview ── */}
+      {/* ── Tab: Overview ──────────────────────────────────────────────────── */}
       {activeTab === "overview" && (
-        <>
-          <div className="row">
-            {/* Fee Summary */}
-            <div className="col-lg-5">
-              <div className="card">
-                <div className="card-body">
-                  <div className="d-flex align-items-center justify-content-between mb-3">
-                    <h5 className="card-title mb-0">Fee Summary</h5>
-                    <Link to="/admin/finance" style={{ fontSize: 13, color: "var(--primary)", fontWeight: 500 }}>
-                      View All →
-                    </Link>
-                  </div>
+        <div className="grid-2">
 
-                  {/* Expected / Collected / Outstanding */}
-                  <div className="row g-2 mb-3">
-                    {[
-                      { label: "Expected",    value: data.total_fees_expected,    bg: "#eff6ff", fg: "var(--primary)" },
-                      { label: "Collected",   value: data.total_fees_collected,   bg: "#ecfdf5", fg: "var(--success)" },
-                      { label: "Outstanding", value: data.total_fees_outstanding, bg: "#fef2f2", fg: "var(--danger)" },
-                    ].map((f) => (
-                      <div key={f.label} className="col-4">
-                        <div style={{ background: f.bg, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
-                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{f.label}</div>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: f.fg }}>
-                            {formatCurrency(f.value)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mb-3">
-                    <div className="d-flex justify-content-between" style={{ fontSize: 13, marginBottom: 6 }}>
-                      <span style={{ color: "var(--text-muted)" }}>Collection Progress</span>
-                      <strong>{collRate.toFixed(1)}%</strong>
-                    </div>
-                    <div style={{ height: 8, background: "var(--border)", borderRadius: 10, overflow: "hidden" }}>
-                      <div
-                        style={{
-                          height: "100%", borderRadius: 10,
-                          width: `${Math.min(collRate, 100)}%`,
-                          background: "linear-gradient(90deg, var(--primary), var(--accent))",
-                          transition: "width 0.5s ease",
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Students per form bar chart */}
-                  {data.students_per_form?.length > 0 && (
-                    <ResponsiveContainer width="100%" height={160}>
-                      <BarChart data={data.students_per_form} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="form" tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
-                        <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
-                        <Tooltip {...customTooltip} />
-                        <Bar dataKey="count" name="Students" radius={[6, 6, 0, 0]}>
-                          {data.students_per_form.map((_, i) => (
-                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
+          {/* Fee Summary */}
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <h5 className="card-title">Fee Summary</h5>
+                <p className="card-subtitle">Current term collection status</p>
               </div>
+              <Link to="/admin/finance" className="btn btn-ghost btn-sm">
+                View All <i className="bi bi-arrow-right" />
+              </Link>
             </div>
-
-            {/* Recent Payments */}
-            <div className="col-lg-7">
-              <div className="card">
-                <div className="card-body">
-                  <div className="d-flex align-items-center justify-content-between mb-3">
-                    <h5 className="card-title mb-0">
-                      Recent Payments
-                      {data.recent_payments?.length > 0 && (
-                        <span className="count-chip" style={{ marginLeft: 10, fontSize: 12 }}>
-                          {data.recent_payments.length}
-                        </span>
-                      )}
-                    </h5>
-                    <Link to="/admin/finance/payments" style={{ fontSize: 13, color: "var(--primary)", fontWeight: 500 }}>
-                      View All →
-                    </Link>
+            <div className="card-body">
+              {/* Three mini stat boxes */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+                {[
+                  { label: "Expected",    value: data.total_fees_expected,    cls: "bg-info"    },
+                  { label: "Collected",   value: data.total_fees_collected,   cls: "bg-success" },
+                  { label: "Outstanding", value: data.total_fees_outstanding, cls: "bg-danger"  },
+                ].map((f) => (
+                  <div key={f.label} className={`${f.cls}`} style={{ borderRadius: "var(--radius)", padding: "var(--space-3)", textAlign: "center" }}>
+                    <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginBottom: 4 }}>{f.label}</div>
+                    <div style={{ fontSize: "var(--text-sm)", fontWeight: 800 }}>{formatCurrency(f.value)}</div>
                   </div>
+                ))}
+              </div>
 
-                  {data.recent_payments?.length ? (
-                    <div className="table-responsive">
-                      <table className="table table-hover table-bordered align-middle">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Student</th>
-                            <th>Adm No</th>
-                            <th>Reference</th>
-                            <th>Method</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.recent_payments.map((p) => (
-                            <tr key={p.id}>
-                              {/* Student name — once per row */}
-                              <td className="fw-600" style={{ whiteSpace: "nowrap" }}>
-                                {p.invoice?.student_name || p.student_name || "—"}
-                              </td>
-                              <td>
-                                <code className="adm-link" style={{ fontSize: 12 }}>
-                                  {p.invoice?.admission_no || "—"}
-                                </code>
-                              </td>
-                              <td>
-                                <code style={{ fontSize: 11, background: "var(--border-light)", padding: "3px 7px", borderRadius: 6 }}>
-                                  {p.transaction_reference}
-                                </code>
-                              </td>
-                              <td>
-                                <span
-                                  className="pill"
-                                  style={{ ...methodStyle(p.payment_method), fontWeight: 600, fontSize: 11 }}
-                                >
-                                  {p.payment_method}
-                                </span>
-                              </td>
-                              <td style={{ fontWeight: 700, color: "var(--success)" }}>
-                                {formatCurrency(p.amount)}
-                              </td>
-                              <td>
-                                <span
-                                  className={`badge bg-${p.confirmed ? "success" : "warning"}`}
-                                  style={{ fontSize: 11 }}
-                                >
-                                  {p.confirmed ? "Confirmed" : "Pending"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="empty-message">
-                      <i className="bi bi-cash" style={{ fontSize: 32, display: "block", marginBottom: 8 }} />
-                      No recent payments.
-                    </div>
-                  )}
+              {/* Progress bar */}
+              <div className="mb-4">
+                <div className="d-flex justify-content-between mb-2" style={{ fontSize: "var(--text-sm)" }}>
+                  <span className="text-muted">Collection Progress</span>
+                  <strong>{collRate.toFixed(1)}%</strong>
+                </div>
+                <div className="progress-bar">
+                  <div
+                    className={`progress-bar__fill progress-bar__fill--${collRate >= 80 ? "success" : collRate >= 60 ? "warning" : "danger"}`}
+                    style={{ width: `${Math.min(collRate, 100)}%` }}
+                  />
                 </div>
               </div>
+
+              {/* Students per form */}
+              {data.students_per_form?.length > 0 && (
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={data.students_per_form} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <XAxis dataKey="form" tick={{ fontSize: 11, fill: "var(--color-text-muted)" }} />
+                    <YAxis tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} />
+                    <Tooltip {...chartTooltipStyle} />
+                    <Bar dataKey="count" name="Students" radius={[6, 6, 0, 0]}>
+                      {data.students_per_form.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
-        </>
+
+          {/* Recent Payments */}
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <h5 className="card-title">
+                  Recent Payments
+                  {data.recent_payments?.length > 0 && (
+                    <span className="count-chip ms-2">{data.recent_payments.length}</span>
+                  )}
+                </h5>
+                <p className="card-subtitle">Latest fee transactions</p>
+              </div>
+              <Link to="/admin/finance/payments" className="btn btn-ghost btn-sm">
+                View All <i className="bi bi-arrow-right" />
+              </Link>
+            </div>
+            <div className="card-body" style={{ padding: 0 }}>
+              {data.recent_payments?.length ? (
+                <>
+                  <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Student</th>
+                          <th>Reference</th>
+                          <th>Method</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.recent_payments.map((p) => (
+                          <tr key={p.id}>
+                            <td>
+                              <div className="cell-person">
+                                <div className="cell-avatar cell-avatar--indigo">
+                                  {(p.invoice?.student_name || p.student_name || "?").charAt(0)}
+                                </div>
+                                <div>
+                                  <div className="cell-name">{p.invoice?.student_name || p.student_name || "—"}</div>
+                                  <div className="cell-meta cell-mono">{p.invoice?.admission_no || "—"}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="cell-mono">{p.transaction_reference}</span>
+                            </td>
+                            <td>
+                              <span className={`pill ${methodClass(p.payment_method)}`}>
+                                {p.payment_method}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="text-success fw-700 text-mono">
+                                {formatCurrency(p.amount)}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`badge badge--${p.confirmed ? "success" : "warning"}`}>
+                                {p.confirmed ? "Confirmed" : "Pending"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-state__icon">
+                    <i className="bi bi-cash" />
+                  </div>
+                  <p className="empty-state__desc">No recent payments found.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* ── Tab: Finance ── */}
+      {/* ── Tab: Finance ───────────────────────────────────────────────────── */}
       {activeTab === "finance" && (
         <div className="card">
-          <div className="card-body">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <h5 className="card-title mb-0">Annual Revenue Overview</h5>
-              <div style={{ display: "flex", gap: 16, fontSize: 12, alignItems: "center" }}>
-                <span><i className="bi bi-circle-fill" style={{ color: "#2563eb", marginRight: 4 }} />Revenue</span>
-                <span><i className="bi bi-circle-fill" style={{ color: "#ef4444", marginRight: 4 }} />Expenses</span>
-              </div>
+          <div className="card-header">
+            <div>
+              <h5 className="card-title">Annual Revenue Overview</h5>
+              <p className="card-subtitle">Fee collection breakdown for current year</p>
             </div>
-
-            {/* Fee breakdown summary cards */}
+          </div>
+          <div className="card-body">
             {data.total_fees_expected > 0 && (
-              <div className="row g-3 mb-4">
+              <div className="kpi-grid" style={{ marginBottom: "var(--space-6)" }}>
                 {[
-                  { label: "Total Expected",    value: data.total_fees_expected,    bg: "#eff6ff", fg: "var(--primary)",  icon: "bi-wallet2" },
-                  { label: "Total Collected",   value: data.total_fees_collected,   bg: "#ecfdf5", fg: "var(--success)",  icon: "bi-check-circle" },
-                  { label: "Total Outstanding", value: data.total_fees_outstanding, bg: "#fef2f2", fg: "var(--danger)",   icon: "bi-exclamation-circle" },
+                  { label: "Total Expected",    value: data.total_fees_expected,    color: "blue",  icon: "bi-wallet2"            },
+                  { label: "Total Collected",   value: data.total_fees_collected,   color: "green", icon: "bi-check-circle"       },
+                  { label: "Total Outstanding", value: data.total_fees_outstanding, color: "red",   icon: "bi-exclamation-circle" },
                 ].map((item) => (
-                  <div key={item.label} className="col-md-4">
-                    <div className="card info-card" style={{ marginBottom: 0 }}>
-                      <div className="card-body">
-                        <h5 className="card-title">{item.label}</h5>
-                        <div className="d-flex align-items-center">
-                          <div
-                            className="card-icon rounded-circle d-flex align-items-center justify-content-center"
-                            style={{ background: item.bg, color: item.fg }}
-                          >
-                            <i className={`bi ${item.icon}`} />
-                          </div>
-                          <div className="ps-3">
-                            <h6 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: item.fg }}>
-                              {formatCurrency(item.value)}
-                            </h6>
-                          </div>
-                        </div>
-                      </div>
+                  <div key={item.label} className={`kpi-card kpi-card--${item.color}`}>
+                    <div className="kpi-card__header">
+                      <div className="kpi-card__icon"><i className={`bi ${item.icon}`} /></div>
                     </div>
+                    <div className="kpi-card__value">{formatCurrency(item.value)}</div>
+                    <div className="kpi-card__label">{item.label}</div>
                   </div>
                 ))}
               </div>
             )}
-
-            <div className="text-center text-muted py-4" style={{ fontSize: 13 }}>
-              <i className="bi bi-graph-up" style={{ fontSize: 32, display: "block", marginBottom: 8, color: "var(--primary)" }} />
-              Monthly revenue trend chart will appear once transaction history is available.
+            <div className="empty-state">
+              <div className="empty-state__icon">
+                <i className="bi bi-graph-up" />
+              </div>
+              <p className="empty-state__title" style={{ fontSize: "var(--text-md)" }}>Revenue Trend</p>
+              <p className="empty-state__desc">
+                Monthly revenue chart will appear once transaction history is available.
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Tab: Academics ── */}
+      {/* ── Tab: Academics ─────────────────────────────────────────────────── */}
       {activeTab === "academics" && (
         <div className="card">
+          <div className="card-header">
+            <h5 className="card-title">Students by Form</h5>
+          </div>
           <div className="card-body">
-            <h5 className="card-title mb-3">Students by Form</h5>
             {data.students_per_form?.length ? (
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={data.students_per_form} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="form" tick={{ fontSize: 12, fill: "var(--text-muted)" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
-                  <Tooltip {...customTooltip} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis dataKey="form" tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--color-text-muted)" }} />
+                  <Tooltip {...chartTooltipStyle} />
                   <Bar dataKey="count" name="Students" radius={[8, 8, 0, 0]}>
                     {data.students_per_form.map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
@@ -444,22 +414,24 @@ export default function AdminDashboard() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="empty-message">
-                <i className="bi bi-bar-chart" style={{ fontSize: 32, display: "block", marginBottom: 8 }} />
-                No student distribution data available.
+              <div className="empty-state">
+                <div className="empty-state__icon"><i className="bi bi-bar-chart" /></div>
+                <p className="empty-state__desc">No student distribution data available.</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* ── Quick Actions ── */}
+      {/* ── Quick Actions ───────────────────────────────────────────────────── */}
       <div className="card">
-        <div className="card-body">
+        <div className="card-header">
           <h5 className="card-title">Quick Actions</h5>
+        </div>
+        <div className="card-body">
           <div className="d-flex flex-wrap gap-2">
             {QUICK_ACTIONS.map((a) => (
-              <Link key={a.to} to={a.to} className="btn btn-outline-primary">
+              <Link key={a.to} to={a.to} className="btn btn-outline">
                 <i className={`bi ${a.icon}`} />
                 {a.label}
               </Link>
