@@ -11,11 +11,11 @@ import {
   PageTitle, DataTable, SearchBar, AlertMessage, ConfirmDialog, LoadingSpinner,
 } from "../../../components/common";
 
-// ✅ Field at module level — never remounts on re-render
-const Field = ({ label, name, type = "text", required = false, placeholder, colClass = "col-md-6", form, set }) => (
-  <div className={`${colClass} mb-3`}>
+// ── Reusable form field ───────────────────────────────────────────────────────
+const Field = ({ label, name, type = "text", required = false, placeholder, form, set }) => (
+  <div className="form-group">
     <label className="form-label">
-      {label}{required && <span className="text-danger ms-1">*</span>}
+      {label}{required && <span className="required">*</span>}
     </label>
     <input
       type={type}
@@ -28,7 +28,9 @@ const Field = ({ label, name, type = "text", required = false, placeholder, colC
   </div>
 );
 
-/* ── TeacherList ─────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   TeacherList
+   ══════════════════════════════════════════════════════════════════════ */
 export function TeacherList() {
   const [search,   setSearch]   = useState("");
   const [page,     setPage]     = useState(1);
@@ -48,8 +50,8 @@ export function TeacherList() {
     try {
       const params = { page };
       if (search) params.search = search;
-      const response = await getTeachers(params);
-      const payload  = response?.data ?? response;
+      const res     = await getTeachers(params);
+      const payload = res?.data ?? res;
       if (payload?.results !== undefined) {
         setData(payload.results);
         setCount(payload.count ?? payload.results.length);
@@ -85,41 +87,37 @@ export function TeacherList() {
   };
 
   const getPageNumbers = () => {
-    const delta = 2;
-    const range = [];
-    for (let i = Math.max(1, page - delta); i <= Math.min(totalPages, page + delta); i++) {
-      range.push(i);
-    }
+    const delta = 2, range = [];
+    for (let i = Math.max(1, page - delta); i <= Math.min(totalPages, page + delta); i++) range.push(i);
     return range;
   };
 
   const columns = [
     {
       header: "Staff No",
-      render: (t) => (
-        <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 13 }}>
-          {t.staff_number || "—"}
-        </span>
-      ),
+      render: (t) => <span className="cell-mono">{t.staff_number || "—"}</span>,
     },
     {
       header: "Teacher",
       render: (t) => (
-        <div className="teacher-cell">
-          <div className="teacher-avatar">{t.full_name?.charAt(0).toUpperCase()}</div>
+        <div className="cell-person">
+          <div className="cell-avatar cell-avatar--indigo">
+            {t.full_name?.charAt(0).toUpperCase()}
+          </div>
           <div>
-            <Link to={`/admin/teachers/${t.id}`} className="teacher-cell__name"
-              style={{ textDecoration: "none", color: "inherit" }}>
+            <Link to={`/admin/teachers/${t.id}`} className="cell-name" style={{ textDecoration: "none" }}>
               {t.full_name}
             </Link>
-            <div className="teacher-cell__sub">{t.email}</div>
+            <div className="cell-meta">{t.email}</div>
           </div>
         </div>
       ),
     },
     {
       header: "TSC No",
-      render: (t) => t.tsc_number || <span className="text-muted">—</span>,
+      render: (t) => t.tsc_number
+        ? <span className="cell-mono">{t.tsc_number}</span>
+        : <span className="text-muted">—</span>,
     },
     {
       header: "Department",
@@ -132,8 +130,8 @@ export function TeacherList() {
     {
       header: "Status",
       render: (t) => (
-        <span className={`status-chip status-chip--${t.is_active ? "active" : "inactive"}`}>
-          <i className={`bi bi-${t.is_active ? "check-circle-fill" : "dash-circle"}`} />
+        <span className={`status status--${t.is_active ? "active" : "inactive"}`}>
+          <span className="status__dot" />
           {t.is_active ? "Active" : "Inactive"}
         </span>
       ),
@@ -149,10 +147,8 @@ export function TeacherList() {
             <i className="bi bi-pencil" />
           </Link>
           <button
-            className="tbl-btn tbl-btn--del"
+            className="tbl-btn tbl-btn--delete"
             onClick={() => setDeleteId(t.id)}
-            data-bs-toggle="modal"
-            data-bs-target="#confirmDeleteTeacher"
             title="Delete"
           >
             <i className="bi bi-trash" />
@@ -166,92 +162,75 @@ export function TeacherList() {
     <>
       <PageTitle title="Teachers" breadcrumbs={[{ label: "Teachers" }]} />
 
-      <AlertMessage
-        type={msg.type}
-        message={msg.text}
-        onClose={() => setMsg({ type: "", text: "" })}
-      />
+      {msg.text && (
+        <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg({ type: "", text: "" })} />
+      )}
 
       <div className="card">
-        <div className="card-body">
-          <div className="tbl-toolbar">
-            <h5 className="card-title mb-0">
-              All Teachers{" "}
-              {count > 0 && <span className="badge bg-primary ms-2">{count}</span>}
+        <div className="card-header">
+          <div>
+            <h5 className="card-title">
+              All Teachers
+              {count > 0 && <span className="count-chip ms-2">{count.toLocaleString()}</span>}
             </h5>
-            <div className="tbl-toolbar__right">
-              <SearchBar
-                value={search}
-                onChange={setSearch}
-                placeholder="Search by name or email…"
-              />
-              <Link to="/admin/teachers/new" className="btn btn-primary btn-sm">
-                <i className="bi bi-person-plus" /> Add Teacher
-              </Link>
+            <p className="card-subtitle">Manage teaching staff</p>
+          </div>
+          <div className="d-flex align-items-center gap-3">
+            <SearchBar value={search} onChange={setSearch} placeholder="Search by name or email…" />
+            <Link to="/admin/teachers/new" className="btn btn-primary btn-sm">
+              <i className="bi bi-person-plus" /> Add Teacher
+            </Link>
+          </div>
+        </div>
+
+        {error && (
+          <div className="card-body" style={{ paddingBottom: 0 }}>
+            <AlertMessage type="danger" message={error} />
+          </div>
+        )}
+
+        <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
+          <DataTable columns={columns} data={data} loading={loading} emptyMessage="No teachers found." />
+        </div>
+
+        {totalPages > 1 && (
+          <div className="pagination">
+            <span className="pagination__info">
+              Showing <strong>{(page - 1) * PAGE_SIZE + 1}</strong>–
+              <strong>{Math.min(page * PAGE_SIZE, count)}</strong> of{" "}
+              <strong>{count.toLocaleString()}</strong> teachers
+            </span>
+            <div className="pagination__controls">
+              <button className="page-btn" onClick={() => setPage(1)} disabled={page === 1} title="First">«</button>
+              <button className="page-btn" onClick={() => setPage((p) => p - 1)} disabled={page === 1}>‹</button>
+              {page > 3 && <span className="page-btn" style={{ cursor: "default", opacity: 0.4 }}>…</span>}
+              {getPageNumbers().map((n) => (
+                <button key={n} className={`page-btn${n === page ? " active" : ""}`} onClick={() => setPage(n)}>{n}</button>
+              ))}
+              {page < totalPages - 2 && <span className="page-btn" style={{ cursor: "default", opacity: 0.4 }}>…</span>}
+              <button className="page-btn" onClick={() => setPage((p) => p + 1)} disabled={page === totalPages}>›</button>
+              <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page === totalPages} title="Last">»</button>
             </div>
           </div>
-
-          {error && <AlertMessage type="danger" message={error} />}
-
-          <DataTable
-            columns={columns}
-            data={data}
-            loading={loading}
-            emptyMessage="No teachers found."
-          />
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="d-flex align-items-center justify-content-between mt-3 flex-wrap gap-2">
-              <small className="text-muted">
-                Showing <strong>{(page - 1) * PAGE_SIZE + 1}</strong>–
-                <strong>{Math.min(page * PAGE_SIZE, count)}</strong> of{" "}
-                <strong>{count}</strong> teachers
-              </small>
-
-              <nav>
-                <ul className="pagination pagination-sm mb-0">
-                  <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
-                    <button className="page-link" onClick={() => setPage(1)} disabled={page === 1} title="First">«</button>
-                  </li>
-                  <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
-                    <button className="page-link" onClick={() => setPage((p) => p - 1)} disabled={page === 1}>‹</button>
-                  </li>
-
-                  {page > 3 && <li className="page-item disabled"><span className="page-link">…</span></li>}
-
-                  {getPageNumbers().map((n) => (
-                    <li key={n} className={`page-item ${n === page ? "active" : ""}`}>
-                      <button className="page-link" onClick={() => setPage(n)}>{n}</button>
-                    </li>
-                  ))}
-
-                  {page < totalPages - 2 && <li className="page-item disabled"><span className="page-link">…</span></li>}
-
-                  <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
-                    <button className="page-link" onClick={() => setPage((p) => p + 1)} disabled={page === totalPages}>›</button>
-                  </li>
-                  <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
-                    <button className="page-link" onClick={() => setPage(totalPages)} disabled={page === totalPages} title="Last">»</button>
-                  </li>
-                </ul>
-              </nav>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       <ConfirmDialog
-        id="confirmDeleteTeacher"
+        show={!!deleteId}
         title="Delete Teacher"
         message="Are you sure you want to delete this teacher? This action cannot be undone."
         onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+        confirmLabel="Delete"
+        confirmColor="danger"
       />
     </>
   );
 }
 
-/* ── TeacherForm ─────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   TeacherForm
+   ══════════════════════════════════════════════════════════════════════ */
 export function TeacherForm() {
   const { id }   = useParams();
   const navigate = useNavigate();
@@ -277,15 +256,15 @@ export function TeacherForm() {
     getTeacher(id).then((r) => {
       const t = r.data;
       setForm({
-        email:              t.email              || "",
-        first_name:         t.user?.first_name   || "",
-        last_name:          t.user?.last_name    || "",
-        phone:              t.user?.phone        || "",
-        staff_number:       t.staff_number       || "",
-        tsc_number:         t.tsc_number         || "",
-        department:         t.department         || "",
-        qualification:      t.qualification      || "",
-        date_joined_school: t.date_joined_school || "",
+        email:              t.email                || "",
+        first_name:         t.user?.first_name     || "",
+        last_name:          t.user?.last_name      || "",
+        phone:              t.user?.phone          || "",
+        staff_number:       t.staff_number         || "",
+        tsc_number:         t.tsc_number           || "",
+        department:         t.department           || "",
+        qualification:      t.qualification        || "",
+        date_joined_school: t.date_joined_school   || "",
       });
     });
   }, [id, isEdit]);
@@ -314,7 +293,7 @@ export function TeacherForm() {
     }
   };
 
-  const fieldProps = { form, set };
+  const fp = { form, set };
 
   return (
     <>
@@ -330,39 +309,44 @@ export function TeacherForm() {
 
       <div className="card">
         <div className="card-header">
-          <h5 className="card-title mb-0">
-            {isEdit ? "Update Teacher Details" : "New Teacher Registration"}
-          </h5>
+          <div>
+            <h5 className="card-title">{isEdit ? "Update Teacher Details" : "New Teacher Registration"}</h5>
+            <p className="card-subtitle">{isEdit ? "Edit staff information below" : "Fill in the details to register a new teacher"}</p>
+          </div>
         </div>
         <div className="card-body">
           <form onSubmit={handleSubmit}>
-            <div className="form-section-label">Account Information</div>
-            <div className="row">
-              <Field label="First Name" name="first_name" required {...fieldProps} />
-              <Field label="Last Name"  name="last_name"  required {...fieldProps} />
-              <Field label="Email"      name="email"      type="email" required={!isEdit} {...fieldProps} />
-              <Field label="Phone"      name="phone"      type="tel" {...fieldProps} />
+
+            <span className="form-section">Account Information</span>
+            <div className="form-grid form-grid--2">
+              <Field label="First Name" name="first_name" required {...fp} />
+              <Field label="Last Name"  name="last_name"  required {...fp} />
+              <Field label="Email"      name="email"      type="email" required={!isEdit} {...fp} />
+              <Field label="Phone"      name="phone"      type="tel"  {...fp} />
               {!isEdit && (
-                <Field label="Initial Password" name="password" placeholder="Default: school@2024" {...fieldProps} />
+                <Field label="Initial Password" name="password" placeholder="Default: school@2024" {...fp} />
               )}
             </div>
 
-            <div className="form-section-label mt-2">Professional Details</div>
-            <div className="row">
-              <Field label="Staff Number"       name="staff_number"       required {...fieldProps} />
-              <Field label="TSC Number"         name="tsc_number"                  {...fieldProps} />
-              <Field label="Department"         name="department"                  {...fieldProps} />
-              <Field label="Qualification"      name="qualification"               {...fieldProps} />
-              <Field label="Date Joined School" name="date_joined_school" type="date" {...fieldProps} />
+            <span className="form-section" style={{ marginTop: "var(--space-4)" }}>Professional Details</span>
+            <div className="form-grid form-grid--2">
+              <Field label="Staff Number"       name="staff_number"       required {...fp} />
+              <Field label="TSC Number"         name="tsc_number"                  {...fp} />
+              <Field label="Department"         name="department"                  {...fp} />
+              <Field label="Qualification"      name="qualification"               {...fp} />
+              <Field label="Date Joined School" name="date_joined_school" type="date" {...fp} />
             </div>
 
-            <div className="d-flex gap-2 mt-2">
+            <div className="d-flex gap-3" style={{ marginTop: "var(--space-5)" }}>
               <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
-                {loading && <span className="spinner-border spinner-border-sm me-2" />}
+                {loading && <span className="spinner spinner--sm" style={{ marginRight: 8, display: "inline-block" }} />}
                 {isEdit ? "Update Teacher" : "Add Teacher"}
               </button>
-              <button type="button" className="btn btn-outline-secondary btn-sm"
-                onClick={() => navigate("/admin/teachers")}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => navigate("/admin/teachers")}
+              >
                 Cancel
               </button>
             </div>
@@ -373,19 +357,17 @@ export function TeacherForm() {
   );
 }
 
-/* ── SubjectAllocation ───────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   SubjectAllocation
+   ══════════════════════════════════════════════════════════════════════ */
 export function SubjectAllocation() {
   const [msg,    setMsg]    = useState({ type: "", text: "" });
-  const [form,   setForm]   = useState({
-    teacher: "", subject: "", classroom: "", academic_year: "",
-  });
-
-  // ── pagination + search state ──────────────────────────────────────
-  const [allocs,  setAllocs]  = useState([]);
-  const [count,   setCount]   = useState(0);
-  const [page,    setPage]    = useState(1);
-  const [search,  setSearch]  = useState("");
-  const [loading, setLoading] = useState(false);
+  const [form,   setForm]   = useState({ teacher: "", subject: "", classroom: "", academic_year: "" });
+  const [allocs, setAllocs] = useState([]);
+  const [count,  setCount]  = useState(0);
+  const [page,   setPage]   = useState(1);
+  const [search, setSearch] = useState("");
+  const [loading,setLoading]= useState(false);
 
   const PAGE_SIZE  = 15;
   const totalPages = Math.ceil(count / PAGE_SIZE);
@@ -395,7 +377,6 @@ export function SubjectAllocation() {
   const { data: classrooms } = useFetch(() => getClassrooms());
   const { data: years      } = useFetch(() => getAcademicYears());
 
-  // ── fetch allocations ──────────────────────────────────────────────
   const fetchAllocs = useCallback(async () => {
     setLoading(true);
     try {
@@ -423,19 +404,12 @@ export function SubjectAllocation() {
   useEffect(() => { fetchAllocs(); }, [fetchAllocs]);
   useEffect(() => { setPage(1); },   [search]);
 
-  // ── page numbers helper ────────────────────────────────────────────
   const getPageNumbers = () => {
-    const delta = 2;
-    const range = [];
-    for (
-      let i = Math.max(1, page - delta);
-      i <= Math.min(totalPages, page + delta);
-      i++
-    ) range.push(i);
+    const delta = 2, range = [];
+    for (let i = Math.max(1, page - delta); i <= Math.min(totalPages, page + delta); i++) range.push(i);
     return range;
   };
 
-  // ── create allocation ──────────────────────────────────────────────
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
@@ -450,20 +424,15 @@ export function SubjectAllocation() {
       setPage(1);
       fetchAllocs();
     } catch (err) {
-      setMsg({
-        type: "danger",
-        text: err.response?.data?.detail || "Failed to create allocation.",
-      });
+      setMsg({ type: "danger", text: err.response?.data?.detail || "Failed to create allocation." });
     }
   };
 
-  // ── delete allocation ──────────────────────────────────────────────
-  const handleDelete = async (id) => {
+  const handleDelete = async (allocId) => {
     if (!window.confirm("Remove this allocation?")) return;
     try {
-      await deleteAllocation(id);
+      await deleteAllocation(allocId);
       setMsg({ type: "success", text: "Allocation removed." });
-      // If we deleted the last item on a non-first page, step back
       if (allocs.length === 1 && page > 1) setPage((p) => p - 1);
       else fetchAllocs();
     } catch {
@@ -474,17 +443,17 @@ export function SubjectAllocation() {
   const selects = [
     {
       label: "Teacher",
-      key: "teacher",
+      key:   "teacher",
       options: (teachers ?? []).map((t) => ({ value: t.id, label: t.full_name })),
     },
     {
       label: "Subject",
-      key: "subject",
+      key:   "subject",
       options: (subjects ?? []).map((s) => ({ value: s.id, label: s.name })),
     },
     {
       label: "Classroom",
-      key: "classroom",
+      key:   "classroom",
       options: (classrooms ?? []).map((c) => ({
         value: c.id,
         label: `${c.stream_display} – ${c.academic_year_display}`,
@@ -492,7 +461,7 @@ export function SubjectAllocation() {
     },
     {
       label: "Academic Year",
-      key: "academic_year",
+      key:   "academic_year",
       options: (years ?? []).map((y) => ({ value: y.id, label: y.year })),
     },
   ];
@@ -501,48 +470,43 @@ export function SubjectAllocation() {
     <>
       <PageTitle
         title="Subject Allocation"
-        breadcrumbs={[{ label: "Teachers" }, { label: "Subject Allocation" }]}
+        breadcrumbs={[{ label: "Teachers", to: "/admin/teachers" }, { label: "Subject Allocation" }]}
       />
 
-      <AlertMessage
-        type={msg.type}
-        message={msg.text}
-        onClose={() => setMsg({ type: "", text: "" })}
-      />
+      {msg.text && (
+        <AlertMessage type={msg.type} message={msg.text} onClose={() => setMsg({ type: "", text: "" })} />
+      )}
 
-      {/* ── Create form ── */}
-      <div className="card mb-3">
+      {/* ── Assign form ─────────────────────────────────────────────── */}
+      <div className="card">
         <div className="card-header">
-          <h5 className="card-title mb-0">Assign Teacher → Subject → Classroom</h5>
+          <div>
+            <h5 className="card-title">Assign Teacher → Subject → Classroom</h5>
+            <p className="card-subtitle">Create a new subject allocation</p>
+          </div>
         </div>
         <div className="card-body">
           <form onSubmit={handleCreate}>
             <div className="alloc-form-grid">
               {selects.map(({ label, key, options }) => (
-                <div key={key}>
+                <div className="form-group" key={key} style={{ marginBottom: 0 }}>
                   <label className="form-label">{label}</label>
                   <select
                     className="form-select form-select-sm"
                     value={form[key]}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, [key]: e.target.value }))
-                    }
+                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
                     required
                   >
                     <option value="">— {label} —</option>
                     {options.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
+                      <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
                 </div>
               ))}
-              <div>
-                <label className="form-label" style={{ visibility: "hidden" }}>
-                  Go
-                </label>
-                <button type="submit" className="btn btn-primary btn-sm w-100">
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ visibility: "hidden" }}>Go</label>
+                <button type="submit" className="btn btn-primary btn-sm w-full">
                   <i className="bi bi-plus-circle" /> Assign
                 </button>
               </div>
@@ -551,166 +515,96 @@ export function SubjectAllocation() {
         </div>
       </div>
 
-      {/* ── Allocations table ── */}
+      {/* ── Allocations table ───────────────────────────────────────── */}
       <div className="card">
-        <div className="card-body">
-
-          {/* toolbar: title + count + search */}
-          <div className="tbl-toolbar mb-3">
-            <h5 className="card-title mb-0">
-              Current Allocations{" "}
-              {count > 0 && (
-                <span className="badge bg-primary ms-2">{count}</span>
-              )}
+        <div className="card-header">
+          <div>
+            <h5 className="card-title">
+              Current Allocations
+              {count > 0 && <span className="count-chip ms-2">{count.toLocaleString()}</span>}
             </h5>
-            <div className="tbl-toolbar__right">
-              <SearchBar
-                value={search}
-                onChange={setSearch}
-                placeholder="Search teacher or subject…"
-              />
-            </div>
+            <p className="card-subtitle">All teacher-subject assignments</p>
           </div>
-
-          {/* table */}
-          <div className="table-responsive">
-            <table className="alloc-table">
-              <thead>
-                <tr>
-                  <th>Teacher</th>
-                  <th>Subject</th>
-                  <th>Classroom</th>
-                  <th>Year</th>
-                  <th style={{ width: 60 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-4">
-                      <LoadingSpinner />
-                    </td>
-                  </tr>
-                ) : allocs.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center text-muted py-4">
-                      No allocations found.
-                    </td>
-                  </tr>
-                ) : (
-                  allocs.map((a) => (
-                    <tr key={a.id}>
-                      <td className="alloc-teacher">{a.teacher_name}</td>
-                      <td className="alloc-subject">{a.subject_name}</td>
-                      <td className="alloc-class">{a.classroom_display}</td>
-                      <td className="alloc-class">{a.academic_year_display}</td>
-                      <td>
-                        <button
-                          className="tbl-btn tbl-btn--del"
-                          onClick={() => handleDelete(a.id)}
-                          title="Remove allocation"
-                        >
-                          <i className="bi bi-trash" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* pagination */}
-          {totalPages > 1 && (
-            <div className="d-flex align-items-center justify-content-between mt-3 flex-wrap gap-2">
-              <small className="text-muted">
-                Showing{" "}
-                <strong>{(page - 1) * PAGE_SIZE + 1}</strong>–
-                <strong>{Math.min(page * PAGE_SIZE, count)}</strong> of{" "}
-                <strong>{count}</strong> allocations
-              </small>
-
-              <nav>
-                <ul className="pagination pagination-sm mb-0">
-                  {/* First */}
-                  <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setPage(1)}
-                      disabled={page === 1}
-                      title="First"
-                    >
-                      «
-                    </button>
-                  </li>
-                  {/* Prev */}
-                  <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setPage((p) => p - 1)}
-                      disabled={page === 1}
-                    >
-                      ‹
-                    </button>
-                  </li>
-
-                  {page > 3 && (
-                    <li className="page-item disabled">
-                      <span className="page-link">…</span>
-                    </li>
-                  )}
-
-                  {getPageNumbers().map((n) => (
-                    <li
-                      key={n}
-                      className={`page-item ${n === page ? "active" : ""}`}
-                    >
-                      <button
-                        className="page-link"
-                        onClick={() => setPage(n)}
-                      >
-                        {n}
-                      </button>
-                    </li>
-                  ))}
-
-                  {page < totalPages - 2 && (
-                    <li className="page-item disabled">
-                      <span className="page-link">…</span>
-                    </li>
-                  )}
-
-                  {/* Next */}
-                  <li
-                    className={`page-item ${page === totalPages ? "disabled" : ""}`}
-                  >
-                    <button
-                      className="page-link"
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={page === totalPages}
-                    >
-                      ›
-                    </button>
-                  </li>
-                  {/* Last */}
-                  <li
-                    className={`page-item ${page === totalPages ? "disabled" : ""}`}
-                  >
-                    <button
-                      className="page-link"
-                      onClick={() => setPage(totalPages)}
-                      disabled={page === totalPages}
-                      title="Last"
-                    >
-                      »
-                    </button>
-                  </li>
-                </ul>
-              </nav>
-            </div>
-          )}
-
+          <SearchBar value={search} onChange={setSearch} placeholder="Search teacher or subject…" />
         </div>
+
+        <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Teacher</th>
+                <th>Subject</th>
+                <th>Classroom</th>
+                <th>Year</th>
+                <th style={{ width: 60 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "center", padding: "var(--space-8)" }}>
+                    <LoadingSpinner />
+                  </td>
+                </tr>
+              ) : allocs.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="empty-state">
+                      <div className="empty-state__icon"><i className="bi bi-journal-x" /></div>
+                      <p className="empty-state__desc">No allocations found.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                allocs.map((a) => (
+                  <tr key={a.id}>
+                    <td>
+                      <div className="cell-person">
+                        <div className="cell-avatar cell-avatar--indigo">
+                          {a.teacher_name?.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="cell-name">{a.teacher_name}</span>
+                      </div>
+                    </td>
+                    <td><span className="fw-600">{a.subject_name}</span></td>
+                    <td>{a.classroom_display}</td>
+                    <td><span className="cell-mono">{a.academic_year_display}</span></td>
+                    <td>
+                      <button
+                        className="tbl-btn tbl-btn--delete"
+                        onClick={() => handleDelete(a.id)}
+                        title="Remove allocation"
+                      >
+                        <i className="bi bi-trash" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {totalPages > 1 && (
+          <div className="pagination">
+            <span className="pagination__info">
+              Showing <strong>{(page - 1) * PAGE_SIZE + 1}</strong>–
+              <strong>{Math.min(page * PAGE_SIZE, count)}</strong> of{" "}
+              <strong>{count.toLocaleString()}</strong> allocations
+            </span>
+            <div className="pagination__controls">
+              <button className="page-btn" onClick={() => setPage(1)} disabled={page === 1} title="First">«</button>
+              <button className="page-btn" onClick={() => setPage((p) => p - 1)} disabled={page === 1}>‹</button>
+              {page > 3 && <span className="page-btn" style={{ cursor: "default", opacity: 0.4 }}>…</span>}
+              {getPageNumbers().map((n) => (
+                <button key={n} className={`page-btn${n === page ? " active" : ""}`} onClick={() => setPage(n)}>{n}</button>
+              ))}
+              {page < totalPages - 2 && <span className="page-btn" style={{ cursor: "default", opacity: 0.4 }}>…</span>}
+              <button className="page-btn" onClick={() => setPage((p) => p + 1)} disabled={page === totalPages}>›</button>
+              <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page === totalPages} title="Last">»</button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
