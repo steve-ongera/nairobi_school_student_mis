@@ -2,8 +2,21 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getStudentDashboard } from "../../utils/api";
 import { formatCurrency } from "../../utils/formatters";
-import { PageTitle, StatCard, LoadingSpinner, AlertMessage, GradeBadge } from "../../components/common";
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PageTitle,
+  StatCard,
+  LoadingSpinner,
+  AlertMessage,
+  GradeBadge,
+} from "../../components/common";
+import {
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 
 export default function StudentDashboard() {
   const [data, setData] = useState(null);
@@ -22,8 +35,13 @@ export default function StudentDashboard() {
   if (!data) return null;
 
   const {
-    student, current_invoice, fee_balance, recent_results,
-    latest_mean_grade, latest_exam, attendance_this_term,
+    student,
+    current_invoice,
+    fee_balance,
+    recent_results,
+    latest_mean_grade,
+    latest_exam,
+    attendance_this_term,
   } = data;
 
   const radarData = recent_results?.map((r) => ({
@@ -31,248 +49,330 @@ export default function StudentDashboard() {
     marks: parseFloat(r.marks) || 0,
   }));
 
+  const paidPct = current_invoice
+    ? Math.round(
+        (current_invoice.amount_paid / current_invoice.total_amount) * 100
+      )
+    : 0;
+
   return (
     <>
       <style>{`
+        /* ── Google Fonts (matches main.css) ── */
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
         /* ── Welcome Banner ── */
         .dash-banner {
-          background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-          border-radius: 20px;
-          padding: 24px 28px;
+          background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-500) 55%, var(--teal-500) 100%);
+          border-radius: var(--radius-lg);
+          padding: var(--space-6) var(--space-7);
           display: flex;
           align-items: center;
-          gap: 16px;
-          margin-bottom: 24px;
+          gap: var(--space-5);
+          margin-bottom: var(--space-6);
           position: relative;
           overflow: hidden;
-          transition: all var(--transition-base);
+          box-shadow: var(--shadow-brand);
+          transition: box-shadow var(--transition-base), transform var(--transition-base);
         }
-        
+
         .dash-banner:hover {
           transform: translateY(-2px);
-          box-shadow: var(--shadow-lg);
+          box-shadow: var(--shadow-xl);
         }
-        
-        .dash-banner::before {
+
+        /* decorative circles */
+        .dash-banner::before,
+        .dash-banner::after {
           content: '';
           position: absolute;
-          width: 220px; height: 220px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.06);
-          top: -80px; right: -60px;
           pointer-events: none;
+          background: rgba(255,255,255,0.06);
         }
-        
+        .dash-banner::before {
+          width: 240px; height: 240px;
+          top: -100px; right: -60px;
+        }
+        .dash-banner::after {
+          width: 120px; height: 120px;
+          bottom: -50px; right: 120px;
+        }
+
         .dash-banner__avatar {
-          width: 56px; height: 56px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.2);
+          width: 56px;
+          height: 56px;
+          border-radius: var(--radius-md);
+          background: rgba(255,255,255,0.18);
           color: #fff;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 22px; font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 22px;
+          font-weight: 800;
           flex-shrink: 0;
-          border: 2px solid rgba(255,255,255,0.3);
+          border: 2px solid rgba(255,255,255,0.28);
+          font-family: var(--font-sans);
+          letter-spacing: var(--tracking-tight);
         }
-        
+
+        .dash-banner__info { flex: 1; min-width: 0; }
+
         .dash-banner__name {
-          font-size: 17px; font-weight: 700;
-          color: #fff; margin: 0 0 3px;
+          font-size: var(--text-xl);
+          font-weight: 800;
+          color: #fff;
+          margin: 0 0 var(--space-1);
+          letter-spacing: var(--tracking-snug);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
-        
+
         .dash-banner__sub {
-          font-size: 13px;
-          color: rgba(255,255,255,0.75);
+          font-size: var(--text-sm);
+          color: rgba(255,255,255,0.72);
           margin: 0;
+          font-family: var(--font-mono);
+          letter-spacing: 0.02em;
         }
-        
+
         .dash-banner__grade {
           margin-left: auto;
           text-align: center;
           flex-shrink: 0;
-        }
-        
-        .dash-banner__grade-val {
-          font-size: 34px; font-weight: 800;
-          color: #fff; line-height: 1;
-        }
-        
-        .dash-banner__grade-label {
-          font-size: 11px;
-          color: rgba(255,255,255,0.7);
-          margin-top: 4px;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
+          background: rgba(255,255,255,0.12);
+          border: 1px solid rgba(255,255,255,0.22);
+          border-radius: var(--radius-md);
+          padding: var(--space-3) var(--space-5);
+          backdrop-filter: blur(4px);
         }
 
-        /* ── Results table ── */
+        .dash-banner__grade-val {
+          font-size: var(--text-5xl);
+          font-weight: 800;
+          color: #fff;
+          line-height: 1;
+          letter-spacing: var(--tracking-tight);
+        }
+
+        .dash-banner__grade-label {
+          font-size: var(--text-xs);
+          color: rgba(255,255,255,0.65);
+          margin-top: var(--space-1);
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-widest);
+          font-weight: 600;
+        }
+
+        /* ── KPI row (overrides StatCard if needed) ── */
+        .kpi-row {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: var(--space-5);
+          margin-bottom: var(--space-6);
+          animation: fadeInUp var(--duration-300) var(--ease-out);
+        }
+
+        @media (max-width: 1024px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 576px)  { .kpi-row { grid-template-columns: 1fr; } }
+
+        /* Individual KPI card staggered fade */
+        .kpi-row > *:nth-child(1) { animation: fadeInUp var(--duration-300) var(--ease-out) 0.05s both; }
+        .kpi-row > *:nth-child(2) { animation: fadeInUp var(--duration-300) var(--ease-out) 0.12s both; }
+        .kpi-row > *:nth-child(3) { animation: fadeInUp var(--duration-300) var(--ease-out) 0.19s both; }
+        .kpi-row > *:nth-child(4) { animation: fadeInUp var(--duration-300) var(--ease-out) 0.26s both; }
+
+        /* ── Content columns ── */
+        .dash-cols {
+          display: grid;
+          grid-template-columns: 1fr 380px;
+          gap: var(--space-5);
+          align-items: start;
+        }
+
+        @media (max-width: 1100px) { .dash-cols { grid-template-columns: 1fr; } }
+
+        /* ── Results table (aligned to data-table in main.css) ── */
         .results-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 13px;
+          font-size: var(--text-sm);
+          font-family: var(--font-sans);
         }
-        
-        .results-table thead th {
-          text-align: left;
-          padding: 10px 14px;
-          background: #f8fafc;
-          font-size: 11px;
-          font-weight: 700;
-          color: var(--text-secondary);
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          border-top: 1px solid var(--border);
-          border-bottom: 1px solid var(--border);
-        }
-        
-        .results-table tbody td {
-          padding: 11px 14px;
-          border-bottom: 1px solid var(--border-light);
-          vertical-align: middle;
-          color: var(--text-secondary);
-        }
-        
-        .results-table tbody tr:last-child td { border-bottom: none; }
-        .results-table tbody tr:hover { background: #fafbfc; }
 
+        .results-table thead th {
+          padding: 11px var(--space-4);
+          text-align: left;
+          font-size: var(--text-xs);
+          font-weight: 700;
+          color: var(--color-text-secondary);
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wider);
+          background: var(--slate-50);
+          border-top: 1px solid var(--color-border);
+          border-bottom: 1px solid var(--color-border);
+          white-space: nowrap;
+        }
+
+        .results-table tbody td {
+          padding: 12px var(--space-4);
+          border-bottom: 1px solid var(--color-border);
+          vertical-align: middle;
+          color: var(--color-text-secondary);
+        }
+
+        .results-table tbody tr:last-child td { border-bottom: none; }
+
+        .results-table tbody tr {
+          transition: background var(--duration-75);
+        }
+
+        .results-table tbody tr:hover { background: var(--slate-50); }
+
+        .cell-subject {
+          font-weight: 600;
+          color: var(--color-text);
+          font-size: var(--text-sm);
+          white-space: nowrap;
+        }
+
+        /* marks bar */
         .marks-bar {
-          height: 5px;
-          border-radius: 4px;
-          background: var(--border);
-          width: 70px;
-          margin-bottom: 4px;
+          height: 4px;
+          border-radius: var(--radius-full);
+          background: var(--slate-200);
+          width: 72px;
+          margin-bottom: 5px;
           overflow: hidden;
         }
-        
+
         .marks-bar__fill {
           height: 100%;
-          border-radius: 4px;
-          background: linear-gradient(90deg, var(--primary), var(--accent));
-        }
-        
-        .marks-value {
-          font-weight: 700;
-          color: var(--text-primary);
-          font-size: 13px;
-        }
-        
-        .remarks-text {
-          font-size: 12px;
-          color: var(--text-muted);
+          border-radius: var(--radius-full);
+          background: linear-gradient(90deg, var(--brand-500), var(--teal-500));
+          transition: width var(--duration-500) var(--ease-out);
         }
 
-        /* ── Invoice card rows ── */
-        .invoice-row {
+        .marks-val {
+          font-family: var(--font-mono);
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--color-text);
+        }
+
+        .remarks-text {
+          font-size: var(--text-xs);
+          color: var(--color-text-muted);
+        }
+
+        /* ── Right column cards ── */
+        .dash-right { display: flex; flex-direction: column; gap: var(--space-5); }
+
+        /* ── Invoice rows (fee-row from main.css) ── */
+        .invoice-rows { padding: 0; }
+
+        .fee-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 10px 0;
-          border-bottom: 1px solid var(--border-light);
-        }
-        
-        .invoice-row:last-of-type { border-bottom: none; }
-        
-        .invoice-label {
-          font-size: 13px;
-          color: var(--text-muted);
-        }
-        
-        .invoice-value {
-          font-size: 15px;
-          font-weight: 700;
+          padding: var(--space-3) var(--space-5);
+          border-bottom: 1px solid var(--color-border);
+          font-size: var(--text-sm);
         }
 
-        /* ── Mobile Responsive Styles ── */
+        .fee-row:last-of-type { border-bottom: none; }
+
+        .fee-row__label {
+          color: var(--color-text-secondary);
+          font-weight: 500;
+        }
+
+        .fee-row__value {
+          font-family: var(--font-mono);
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--color-text);
+        }
+
+        .fee-row__value--paid    { color: var(--success-600); }
+        .fee-row__value--balance { color: var(--danger-600); }
+
+        /* progress bar from main.css */
+        .progress-bar {
+          width: 100%;
+          height: 6px;
+          background: var(--slate-100);
+          border-radius: var(--radius-full);
+          overflow: hidden;
+          margin-bottom: var(--space-1);
+        }
+
+        .progress-bar__fill {
+          height: 100%;
+          border-radius: var(--radius-full);
+          background: linear-gradient(90deg, var(--success-500), var(--brand-500));
+          transition: width var(--duration-500) var(--ease-out);
+        }
+
+        /* ── Quick links ── */
+        .quick-links { display: flex; flex-direction: column; gap: var(--space-2); }
+
+        /* ── Empty state ── */
+        .empty-message {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: var(--space-12) var(--space-8);
+          color: var(--color-text-muted);
+          text-align: center;
+        }
+
+        .empty-message i {
+          font-size: 32px;
+          margin-bottom: var(--space-3);
+          opacity: 0.4;
+        }
+
+        .empty-message p {
+          font-size: var(--text-sm);
+          color: var(--color-text-muted);
+          margin: 0;
+        }
+
+        /* ── Mobile ── */
         @media (max-width: 768px) {
           .dash-banner {
             flex-direction: column;
             text-align: center;
-            padding: 20px;
+            padding: var(--space-5);
           }
-          
-          .dash-banner__grade {
-            margin-left: 0;
-            margin-top: 10px;
-          }
-          
-          .dash-banner__grade-val {
-            font-size: 28px;
-          }
-          
-          .results-table {
-            font-size: 11px;
-          }
-          
+          .dash-banner__grade { margin-left: 0; }
+          .dash-banner__grade-val { font-size: var(--text-4xl); }
+          .results-table { font-size: var(--text-xs); }
           .results-table thead th,
-          .results-table tbody td {
-            padding: 8px 10px;
-          }
-          
-          .marks-bar {
-            width: 50px;
-          }
-        }
-        
-        @media (max-width: 576px) {
-          .dash-banner__avatar {
-            width: 48px;
-            height: 48px;
-            font-size: 18px;
-          }
-          
-          .dash-banner__name {
-            font-size: 15px;
-          }
-          
-          .dash-banner__sub {
-            font-size: 11px;
-          }
-          
-          .results-table {
-            font-size: 10px;
-          }
-          
-          .results-table thead th,
-          .results-table tbody td {
-            padding: 6px 8px;
-          }
-          
-          .invoice-value {
-            font-size: 13px;
-          }
-        }
-        
-        /* Animation for stats cards */
-        .stat-card-animation {
-          animation: fadeInUp 0.5s ease;
-        }
-        
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          .results-table tbody td { padding: 9px var(--space-3); }
+          .marks-bar { width: 50px; }
         }
       `}</style>
 
       <div className="student-dashboard-wrapper">
-        <PageTitle 
-          title="My Dashboard" 
-          breadcrumbs={[{ label: "Dashboard" }]} 
+        <PageTitle
+          title="My Dashboard"
+          breadcrumbs={[{ label: "Dashboard" }]}
         />
 
-        {/* ── Welcome banner ── */}
+        {/* ── Welcome Banner ── */}
         <div className="dash-banner">
           <div className="dash-banner__avatar">
             {(student?.full_name || "S").charAt(0).toUpperCase()}
           </div>
-          <div>
+          <div className="dash-banner__info">
             <p className="dash-banner__name">{student?.full_name}</p>
             <p className="dash-banner__sub">
-              {student?.admission_number} • {student?.current_classroom?.stream_display || "—"}
+              {student?.admission_number} &bull;{" "}
+              {student?.current_classroom?.stream_display || "—"}
             </p>
           </div>
           {latest_mean_grade && (
@@ -283,144 +383,162 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        {/* ── Stat cards ── */}
-        <div className="row g-3 g-md-4">
-          <div className="col-sm-6 col-md-3">
-            <div className="stat-card-animation" style={{ animationDelay: '0.1s' }}>
-              <StatCard
-                title="Fee Balance"
-                value={formatCurrency(fee_balance)}
-                icon="bi-cash-coin"
-                color={parseFloat(fee_balance) > 0 ? "danger" : "success"}
-                subtitle={parseFloat(fee_balance) > 0 ? "Outstanding" : "Cleared"}
-              />
-            </div>
-          </div>
-          <div className="col-sm-6 col-md-3">
-            <div className="stat-card-animation" style={{ animationDelay: '0.2s' }}>
-              <StatCard
-                title="Mean Grade"
-                value={latest_mean_grade || "—"}
-                icon="bi-award"
-                color="primary"
-                subtitle={latest_exam?.name || "Latest exam"}
-              />
-            </div>
-          </div>
-          <div className="col-sm-6 col-md-3">
-            <div className="stat-card-animation" style={{ animationDelay: '0.3s' }}>
-              <StatCard
-                title="Attendance"
-                value={`${attendance_this_term?.attendance_percentage ?? "—"}%`}
-                icon="bi-calendar-check"
-                color={attendance_this_term?.attendance_percentage >= 80 ? "success" : "warning"}
-                subtitle="This term"
-              />
-            </div>
-          </div>
-          <div className="col-sm-6 col-md-3">
-            <div className="stat-card-animation" style={{ animationDelay: '0.4s' }}>
-              <StatCard
-                title="Days Present"
-                value={`${attendance_this_term?.present_days ?? "—"} / ${attendance_this_term?.total_days ?? "—"}`}
-                icon="bi-person-check"
-                color="success"
-              />
-            </div>
-          </div>
+        {/* ── KPI Cards ── */}
+        <div className="kpi-row">
+          <StatCard
+            title="Fee Balance"
+            value={formatCurrency(fee_balance)}
+            icon="bi-cash-coin"
+            color={parseFloat(fee_balance) > 0 ? "danger" : "success"}
+            subtitle={parseFloat(fee_balance) > 0 ? "Outstanding" : "Cleared"}
+          />
+          <StatCard
+            title="Mean Grade"
+            value={latest_mean_grade || "—"}
+            icon="bi-award"
+            color="primary"
+            subtitle={latest_exam?.name || "Latest exam"}
+          />
+          <StatCard
+            title="Attendance"
+            value={`${attendance_this_term?.attendance_percentage ?? "—"}%`}
+            icon="bi-calendar-check"
+            color={
+              attendance_this_term?.attendance_percentage >= 80
+                ? "success"
+                : "warning"
+            }
+            subtitle="This term"
+          />
+          <StatCard
+            title="Days Present"
+            value={`${attendance_this_term?.present_days ?? "—"} / ${
+              attendance_this_term?.total_days ?? "—"
+            }`}
+            icon="bi-person-check"
+            color="success"
+          />
         </div>
 
-        <div className="row g-3 g-md-4 mt-2">
-          {/* ── Recent Results ── */}
-          <div className="col-lg-7">
-            <div className="card h-100">
-              <div className="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <h5 className="card-title mb-0">
-                  Recent Results
-                  {latest_exam && (
-                    <span className="ms-2 count-chip">{latest_exam.name}</span>
-                  )}
-                </h5>
-                <Link to="/student/results" className="btn btn-outline-primary btn-sm">
-                  View All <i className="bi bi-arrow-right ms-1"></i>
-                </Link>
-              </div>
-              <div className="card-body p-0">
-                {recent_results?.length ? (
-                  <div className="table-responsive">
-                    <table className="results-table">
-                      <thead>
-                        <tr>
-                          <th>Subject</th>
-                          <th>Marks</th>
-                          <th>Grade</th>
-                          <th>Points</th>
-                          <th>Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recent_results.map((r, index) => (
-                          <tr key={r.id}>
-                            <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                              {r.subject_name}
-                            </td>
-                            <td>
-                              <div className="marks-bar">
-                                <div 
-                                  className="marks-bar__fill" 
-                                  style={{ width: `${Math.min(r.marks, 100)}%` }} 
-                                />
-                              </div>
-                              <span className="marks-value">{r.marks}</span>
-                            </td>
-                            <td><GradeBadge grade={r.grade} /></td>
-                            <td>{r.points ?? "—"}</td>
-                            <td><span className="remarks-text">{r.remarks || "—"}</span></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="empty-message">
-                    <i className="bi bi-journal-x fs-1 d-block mb-2" />
-                    <p>No published results yet.</p>
-                  </div>
+        {/* ── Main Content Columns ── */}
+        <div className="dash-cols">
+          {/* Left — Recent Results */}
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div className="card-header">
+              <h5 className="card-title">
+                Recent Results
+                {latest_exam && (
+                  <span className="count-chip ms-2">{latest_exam.name}</span>
                 )}
-              </div>
+              </h5>
+              <Link
+                to="/student/results"
+                className="btn btn-outline-primary btn-sm"
+              >
+                View All <i className="bi bi-arrow-right ms-1" />
+              </Link>
+            </div>
+
+            <div className="card-body" style={{ padding: 0 }}>
+              {recent_results?.length ? (
+                <div style={{ overflowX: "auto" }}>
+                  <table className="results-table">
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        <th>Marks</th>
+                        <th>Grade</th>
+                        <th>Points</th>
+                        <th>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recent_results.map((r) => (
+                        <tr key={r.id}>
+                          <td>
+                            <span className="cell-subject">{r.subject_name}</span>
+                          </td>
+                          <td>
+                            <div className="marks-bar">
+                              <div
+                                className="marks-bar__fill"
+                                style={{ width: `${Math.min(r.marks, 100)}%` }}
+                              />
+                            </div>
+                            <span className="marks-val">{r.marks}</span>
+                          </td>
+                          <td>
+                            <GradeBadge grade={r.grade} />
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                fontFamily: "var(--font-mono)",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "var(--brand-600)",
+                              }}
+                            >
+                              {r.points ?? "—"}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="remarks-text">
+                              {r.remarks || "—"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty-message">
+                  <i className="bi bi-journal-x" />
+                  <p>No published results yet.</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* ── Radar + Invoice ── */}
-          <div className="col-lg-5">
+          {/* Right column */}
+          <div className="dash-right">
+            {/* Performance Radar */}
             {radarData?.length > 2 && (
-              <div className="card mb-3">
+              <div className="card" style={{ marginBottom: 0 }}>
                 <div className="card-header">
-                  <h5 className="card-title mb-0">Performance Radar</h5>
+                  <h5 className="card-title">Performance Radar</h5>
                 </div>
                 <div className="card-body">
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer width="100%" height={210}>
                     <RadarChart data={radarData}>
-                      <PolarGrid stroke="var(--border)" />
-                      <PolarAngleAxis 
-                        dataKey="subject" 
-                        tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+                      <PolarGrid stroke="var(--color-border)" />
+                      <PolarAngleAxis
+                        dataKey="subject"
+                        tick={{
+                          fontSize: 11,
+                          fill: "var(--color-text-muted)",
+                          fontFamily: "var(--font-sans)",
+                        }}
                       />
                       <Radar
                         dataKey="marks"
-                        stroke="var(--primary)"
-                        fill="var(--primary)"
-                        fillOpacity={0.2}
+                        stroke="var(--brand-500)"
+                        fill="var(--brand-500)"
+                        fillOpacity={0.18}
+                        strokeWidth={2}
                       />
                       <Tooltip
                         contentStyle={{
-                          borderRadius: 10,
-                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-md)",
+                          border: "1px solid var(--color-border)",
                           fontSize: 12,
-                          background: "var(--bg-card)",
-                          color: "var(--text-primary)"
+                          fontFamily: "var(--font-sans)",
+                          background: "var(--color-surface)",
+                          color: "var(--color-text)",
+                          boxShadow: "var(--shadow-lg)",
                         }}
-                        formatter={(value) => [`${value} marks`, 'Score']}
+                        formatter={(v) => [`${v} marks`, "Score"]}
                       />
                     </RadarChart>
                   </ResponsiveContainer>
@@ -428,68 +546,93 @@ export default function StudentDashboard() {
               </div>
             )}
 
+            {/* Current Invoice */}
             {current_invoice && (
-              <div className="card">
+              <div className="card" style={{ marginBottom: 0 }}>
                 <div className="card-header">
-                  <h5 className="card-title mb-0">Current Term Invoice</h5>
+                  <h5 className="card-title">Current Term Invoice</h5>
                 </div>
-                <div className="card-body">
-                  <div className="invoice-row">
-                    <span className="invoice-label">Total Fees</span>
-                    <span className="invoice-value">{formatCurrency(current_invoice.total_amount)}</span>
+
+                <div className="invoice-rows">
+                  <div className="fee-row">
+                    <span className="fee-row__label">Total Fees</span>
+                    <span className="fee-row__value">
+                      {formatCurrency(current_invoice.total_amount)}
+                    </span>
                   </div>
-                  <div className="invoice-row">
-                    <span className="invoice-label">Amount Paid</span>
-                    <span className="invoice-value" style={{ color: "var(--success)" }}>
+                  <div className="fee-row">
+                    <span className="fee-row__label">Amount Paid</span>
+                    <span className="fee-row__value fee-row__value--paid">
                       {formatCurrency(current_invoice.amount_paid)}
                     </span>
                   </div>
-                  <div className="invoice-row">
-                    <span className="invoice-label">Balance Due</span>
-                    <span className="invoice-value" style={{ color: "var(--danger)" }}>
+                  <div className="fee-row">
+                    <span className="fee-row__label">Balance Due</span>
+                    <span className="fee-row__value fee-row__value--balance">
                       {formatCurrency(current_invoice.balance)}
                     </span>
                   </div>
-                  
-                  {parseFloat(current_invoice.balance) > 0 && (
-                    <div className="mt-3">
-                      <div className="progress mb-2" style={{ height: '8px' }}>
-                        <div 
-                          className="progress-bar bg-success" 
-                          style={{ 
-                            width: `${(current_invoice.amount_paid / current_invoice.total_amount) * 100}%`,
-                            background: 'linear-gradient(90deg, var(--success), var(--primary))'
-                          }}
-                        />
-                      </div>
-                      <small className="text-muted">
-                        {Math.round((current_invoice.amount_paid / current_invoice.total_amount) * 100)}% paid
-                      </small>
-                    </div>
-                  )}
-                  
-                  <Link to="/student/fees/pay" className="btn btn-primary w-100 mt-3">
-                    <i className="bi bi-phone me-2" /> Pay via MPESA
-                  </Link>
                 </div>
+
+                {parseFloat(current_invoice.balance) > 0 && (
+                  <div className="card-body" style={{ paddingTop: 0 }}>
+                    <div className="progress-bar">
+                      <div
+                        className="progress-bar__fill"
+                        style={{ width: `${paidPct}%` }}
+                      />
+                    </div>
+                    <small
+                      style={{
+                        fontSize: "var(--text-xs)",
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
+                      {paidPct}% paid
+                    </small>
+                    <Link
+                      to="/student/fees/pay"
+                      className="btn btn-primary btn-block mt-4"
+                      style={{ width: "100%", marginTop: "var(--space-4)" }}
+                    >
+                      <i className="bi bi-phone me-2" />
+                      Pay via M-PESA
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
-            
-            {/* Quick Links Section */}
-            <div className="card mt-3">
+
+            {/* Quick Links */}
+            <div className="card" style={{ marginBottom: 0 }}>
               <div className="card-header">
-                <h5 className="card-title mb-0">Quick Links</h5>
+                <h5 className="card-title">Quick Links</h5>
               </div>
               <div className="card-body">
-                <div className="d-grid gap-2">
-                  <Link to="/student/timetable" className="btn btn-outline-primary">
-                    <i className="bi bi-calendar-week me-2"></i> View Timetable
+                <div className="quick-links">
+                  <Link
+                    to="/student/timetable"
+                    className="btn btn-outline-primary btn-sm"
+                    style={{ justifyContent: "flex-start" }}
+                  >
+                    <i className="bi bi-calendar-week me-2" />
+                    View Timetable
                   </Link>
-                  <Link to="/student/exams" className="btn btn-outline-primary">
-                    <i className="bi bi-journal-bookmark-fill me-2"></i> Upcoming Exams
+                  <Link
+                    to="/student/exams"
+                    className="btn btn-outline-primary btn-sm"
+                    style={{ justifyContent: "flex-start" }}
+                  >
+                    <i className="bi bi-journal-bookmark-fill me-2" />
+                    Upcoming Exams
                   </Link>
-                  <Link to="/student/library" className="btn btn-outline-primary">
-                    <i className="bi bi-book me-2"></i> Library Resources
+                  <Link
+                    to="/student/library"
+                    className="btn btn-outline-primary btn-sm"
+                    style={{ justifyContent: "flex-start" }}
+                  >
+                    <i className="bi bi-book me-2" />
+                    Library Resources
                   </Link>
                 </div>
               </div>
