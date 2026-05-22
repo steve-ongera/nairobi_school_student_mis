@@ -17,97 +17,62 @@ export function Footer() {
 
 export default function Layout() {
   useEffect(() => {
-    // Handle responsive behavior without Bootstrap
-    const handleResize = () => {
-      if (window.innerWidth > 992) {
-        // Close mobile menu when resizing to desktop
-        const mobileMenu = document.querySelector('.mobile-menu-dropdown');
-        if (mobileMenu && mobileMenu.classList.contains('open')) {
-          mobileMenu.classList.remove('open');
-        }
-        
-        // Close mobile search overlay
-        const mobileSearch = document.querySelector('.mobile-search-overlay');
-        if (mobileSearch) {
-          mobileSearch.style.display = 'none';
-        }
-      } else {
-        // On mobile, ensure search overlay is hidden by default
-        const mobileSearch = document.querySelector('.mobile-search-overlay');
-        if (mobileSearch && !mobileSearch.classList.contains('show')) {
-          mobileSearch.style.display = 'none';
-        }
-      }
-    };
-
     // Handle scroll for back to top button
     const handleScroll = () => {
       const btn = document.getElementById('backToTop');
       if (btn) {
         if (window.scrollY > 300) {
-          btn.classList.add('active');
+          btn.classList.add('is-visible');
         } else {
-          btn.classList.remove('active');
+          btn.classList.remove('is-visible');
         }
       }
     };
 
-    // Manual dropdown toggles
-    const setupDropdowns = () => {
-      // Handle profile dropdown
-      const profileToggle = document.querySelector('.nav-profile');
-      const notificationsToggle = document.querySelector('.header-icon-btn[data-bs-toggle="dropdown"]');
-      
-      if (profileToggle) {
-        profileToggle.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const dropdown = profileToggle.closest('.dropdown');
-          const menu = dropdown?.querySelector('.dropdown-menu');
-          if (menu) {
-            // Close other dropdowns
-            document.querySelectorAll('.dropdown-menu.show').forEach(m => {
-              if (m !== menu) m.classList.remove('show');
-            });
-            menu.classList.toggle('show');
+    // Handle sidebar toggle (desktop collapse / mobile open)
+    const setupSidebarToggle = () => {
+      const toggleBtn = document.querySelector('.sidebar-toggle');
+      const backdrop  = document.querySelector('.sidebar-backdrop');
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          if (window.innerWidth >= 1200) {
+            // Desktop: collapse/expand icon rail
+            document.body.classList.toggle('sidebar-collapsed');
+          } else {
+            // Mobile: slide sidebar in/out
+            const sidebar = document.querySelector('.sidebar');
+            const isOpen  = sidebar?.classList.contains('is-open');
+            sidebar?.classList.toggle('is-open', !isOpen);
+            backdrop?.classList.toggle('is-visible', !isOpen);
           }
         });
       }
-      
-      if (notificationsToggle) {
-        notificationsToggle.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const dropdown = notificationsToggle.closest('.dropdown');
-          const menu = dropdown?.querySelector('.dropdown-menu');
-          if (menu) {
-            document.querySelectorAll('.dropdown-menu.show').forEach(m => {
-              if (m !== menu) m.classList.remove('show');
-            });
-            menu.classList.toggle('show');
-          }
+
+      if (backdrop) {
+        backdrop.addEventListener('click', () => {
+          document.querySelector('.sidebar')?.classList.remove('is-open');
+          backdrop.classList.remove('is-visible');
         });
       }
-      
-      // Close dropdowns when clicking outside
-      document.addEventListener('click', () => {
-        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-          menu.classList.remove('show');
-        });
-      });
     };
 
+    // Close mobile sidebar on resize to desktop
+    const handleResize = () => {
+      if (window.innerWidth >= 1200) {
+        document.querySelector('.sidebar')?.classList.remove('is-open');
+        document.querySelector('.sidebar-backdrop')?.classList.remove('is-visible');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', handleScroll);
-    
-    // Setup dropdowns after a short delay to ensure DOM is ready
-    setTimeout(setupDropdowns, 100);
-    
-    // Initial calls
+    setTimeout(setupSidebarToggle, 100);
     handleScroll();
-    handleResize();
 
     return () => {
-      window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
@@ -121,9 +86,9 @@ export default function Layout() {
         </div>
       </main>
       <Footer />
-      
+
       {/* Back to top button */}
-      <button 
+      <button
         className="back-to-top"
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         id="backToTop"

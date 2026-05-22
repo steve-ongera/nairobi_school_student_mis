@@ -1,237 +1,256 @@
 // src/components/layout/Sidebar.jsx
 import { NavLink, useLocation } from "react-router-dom";
-import { useRole } from "../../hooks";
-import { useState, useEffect } from "react";
+import { useRole, useTheme } from "../../hooks";
+import { useState, useEffect, useRef } from "react";
 
 /* ─── Atomic components ──────────────────────────────────────────── */
 
 /** Single flat nav item (no children) */
-const NavItem = ({ to, icon, label }) => (
+const NavItem = ({ to, icon, label, onClick }) => (
   <li className="nav-item">
     <NavLink
       to={to}
-      className={({ isActive }) => `nav-link ${isActive ? "" : "collapsed"}`}
       end
+      onClick={onClick}
+      className={({ isActive }) => `nav-link${isActive ? " active" : " collapsed"}`}
     >
       <i className={`bi ${icon}`} />
-      <span>{label}</span>
+      <span className="nav-link__label">{label}</span>
     </NavLink>
   </li>
 );
 
-/**
- * Collapsible nav group
- */
-const NavGroup = ({ icon, label, children, defaultOpen = false }) => {
-  const location = useLocation();
-  const childArray = Array.isArray(children) ? children.flat() : [children];
-  const isActive = childArray.some(
+/** Collapsible nav group */
+const NavGroup = ({ icon, label, children, onChildClick }) => {
+  const location  = useLocation();
+  const childArr  = Array.isArray(children) ? children.flat() : [children];
+  const isActive  = childArr.some(
     (c) => c?.props?.to && location.pathname.startsWith(c.props.to)
   );
+  const [open, setOpen] = useState(isActive);
+  const id = `nav-${label.replace(/\s+/g, "-").toLowerCase()}`;
 
-  const [isOpen, setIsOpen] = useState(isActive || defaultOpen);
-  const collapseId = `nav-${label.replace(/\s+/g, "-").toLowerCase()}`;
-
-  useEffect(() => {
-    setIsOpen(isActive);
-  }, [isActive]);
-
-  const toggleOpen = (e) => {
-    e.preventDefault();
-    setIsOpen(!isOpen);
-  };
+  useEffect(() => { setOpen(isActive); }, [isActive]);
 
   return (
     <li className="nav-item">
-      <a
-        className={`nav-link ${isOpen ? "" : "collapsed"}`}
-        onClick={toggleOpen}
-        href={`#${collapseId}`}
-        role="button"
-        aria-expanded={isOpen}
+      <button
+        className={`nav-link${open ? "" : " collapsed"}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={id}
+        style={{ width: "100%", textAlign: "left" }}
       >
         <i className={`bi ${icon}`} />
-        <span>{label}</span>
-        <i className="bi bi-chevron-down ms-auto" />
-      </a>
+        <span className="nav-link__label">{label}</span>
+        <i className="bi bi-chevron-down nav-link__chevron" />
+      </button>
 
-      {/* 
-        ✅ FIX: Removed the extra <ul className="nav-content-list"> wrapper.
-        The <ul> inside .nav-content is now unstyled (list-style: none via CSS).
-        Children (<SubItem> components) render their own <li> tags directly.
-      */}
       <ul
-        id={collapseId}
-        className="nav-content"
-        style={{ display: isOpen ? "block" : "none" }}
+        id={id}
+        className="nav-sub"
+        style={{ display: open ? "flex" : "none" }}
       >
-        {children}
+        {/* Clone children and inject onChildClick */}
+        {childArr.map((child, i) =>
+          child
+            ? { ...child, props: { ...child.props, onClick: onChildClick }, key: i }
+            : null
+        )}
       </ul>
     </li>
   );
 };
 
 /** Sub-item inside a NavGroup */
-const SubItem = ({ to, label }) => (
-  // ✅ FIX: <li> here is a direct child of .nav-content <ul>,
-  // so browser default bullets can be cleanly removed via CSS.
+const SubItem = ({ to, label, onClick }) => (
   <li>
-    <NavLink to={to} className={({ isActive }) => (isActive ? "active" : "")}>
-      <i className="bi bi-circle" />
-      <span>{label}</span>
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={({ isActive }) => `nav-sub__item${isActive ? " active" : ""}`}
+    >
+      <span className="nav-link__label">{label}</span>
     </NavLink>
   </li>
 );
 
-/** Section heading label */
+/** Section heading */
 const NavHeading = ({ children }) => (
-  <li className="nav-heading">{children}</li>
+  <li>
+    <span className="nav-section-title">{children}</span>
+  </li>
 );
 
-/* ─── Main sidebar ───────────────────────────────────────────────── */
+/* ─── Main Sidebar ───────────────────────────────────────────────── */
 
 export default function Sidebar() {
-  const {
-    isAdmin,
-    isTeacher,
-    isStudent,
-    isFinance,
-  } = useRole();
+  const { isAdmin, isTeacher, isStudent, isFinance } = useRole();
+  const { sidebarOpen, closeSidebar } = useTheme();
+
+  /* Close sidebar on route change on mobile */
+  const location = useLocation();
+  useEffect(() => {
+    if (window.innerWidth < 1200) closeSidebar?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  /* Close sidebar when clicking backdrop (mobile) */
+  const handleBackdropClick = () => closeSidebar?.();
+
+  /* Close on nav item click (mobile) */
+  const handleItemClick = () => {
+    if (window.innerWidth < 1200) closeSidebar?.();
+  };
+
+  const childClick = handleItemClick; // alias for NavGroup prop
 
   return (
-    <aside className="sidebar">
-      <ul className="sidebar-nav">
+    <>
+      {/* ── Backdrop (mobile only) ─────────────────────────────── */}
+      <div
+        className={`sidebar-backdrop${sidebarOpen ? " is-visible" : ""}`}
+        onClick={handleBackdropClick}
+        aria-hidden="true"
+      />
 
-        {/* ════════════════════════════════════════════════════
-            ADMIN PORTAL
-            ════════════════════════════════════════════════════ */}
-        {isAdmin && (
-          <>
-            <NavHeading>Main</NavHeading>
-            <NavItem to="/admin/dashboard" icon="bi-grid-1x2-fill" label="Dashboard" />
+      {/* ── Sidebar panel ─────────────────────────────────────── */}
+      <aside className={`sidebar${sidebarOpen ? " is-open" : ""}`}>
+        <div className="sidebar__scroll">
+          <ul className="sidebar-nav">
 
-            <NavHeading>Student Management</NavHeading>
-            <NavGroup icon="bi-people-fill" label="Students">
-              <SubItem to="/admin/students"         label="All Students" />
-              <SubItem to="/admin/students/new"     label="Admit Student" />
-              <SubItem to="/admin/students/promote" label="Promotions" />
-              <SubItem to="/admin/students/archive" label="Graduated" />
-            </NavGroup>
+            {/* ══════════════════════════════════════════════
+                ADMIN PORTAL
+                ══════════════════════════════════════════════ */}
+            {isAdmin && (
+              <>
+                <NavHeading>Main</NavHeading>
+                <NavItem to="/admin/dashboard" icon="bi-grid-1x2-fill" label="Dashboard" onClick={handleItemClick} />
 
-            <NavHeading>Academic Operations</NavHeading>
-            <NavGroup icon="bi-building" label="Academics">
-              <SubItem to="/admin/academics/years"      label="Academic Years" />
-              <SubItem to="/admin/academics/classrooms" label="Classrooms" />
-              <SubItem to="/admin/academics/forms"      label="Forms" />
-              <SubItem to="/admin/academics/streams"    label="Streams" />
-              <SubItem to="/admin/academics/subjects"   label="Subjects" />
-              <SubItem to="/admin/academics/timetable"  label="Timetable" />
-            </NavGroup>
+                <NavHeading>Student Management</NavHeading>
+                <NavGroup icon="bi-people-fill" label="Students" onChildClick={childClick}>
+                  <SubItem to="/admin/students"         label="All Students"  />
+                  <SubItem to="/admin/students/new"     label="Admit Student" />
+                  <SubItem to="/admin/students/promote" label="Promotions"    />
+                  <SubItem to="/admin/students/archive" label="Graduated"     />
+                </NavGroup>
 
-            <NavGroup icon="bi-file-text-fill" label="Examinations">
-              <SubItem to="/admin/exams"              label="All Exams" />
-              <SubItem to="/admin/exams/new"          label="Create Exam" />
-              <SubItem to="/admin/exams/results"      label="Results" />
-              <SubItem to="/admin/exams/report-cards" label="Report Cards" />
-              <SubItem to="/admin/exams/analytics"    label="Analytics" />
-            </NavGroup>
+                <NavHeading>Academic Operations</NavHeading>
+                <NavGroup icon="bi-building" label="Academics" onChildClick={childClick}>
+                  <SubItem to="/admin/academics/years"      label="Academic Years" />
+                  <SubItem to="/admin/academics/classrooms" label="Classrooms"     />
+                  <SubItem to="/admin/academics/forms"      label="Forms"          />
+                  <SubItem to="/admin/academics/streams"    label="Streams"        />
+                  <SubItem to="/admin/academics/subjects"   label="Subjects"       />
+                  <SubItem to="/admin/academics/timetable"  label="Timetable"      />
+                </NavGroup>
 
-            <NavHeading>Staff Management</NavHeading>
-            <NavGroup icon="bi-person-badge-fill" label="Teachers">
-              <SubItem to="/admin/teachers"             label="All Teachers" />
-              <SubItem to="/admin/teachers/new"         label="Add Teacher" />
-              <SubItem to="/admin/teachers/allocations" label="Subject Allocation" />
-              <SubItem to="/admin/teachers/attendance"  label="Teacher Attendance" />
-            </NavGroup>
+                <NavGroup icon="bi-file-text-fill" label="Examinations" onChildClick={childClick}>
+                  <SubItem to="/admin/exams"              label="All Exams"    />
+                  <SubItem to="/admin/exams/new"          label="Create Exam"  />
+                  <SubItem to="/admin/exams/results"      label="Results"      />
+                  <SubItem to="/admin/exams/report-cards" label="Report Cards" />
+                  <SubItem to="/admin/exams/analytics"    label="Analytics"    />
+                </NavGroup>
 
-            <NavHeading>Financial Hub</NavHeading>
-            <NavGroup icon="bi-cash-stack" label="Finance">
-              <SubItem to="/admin/finance/dashboard"     label="Dashboard" />
-              <SubItem to="/admin/finance/fee-structure" label="Fee Structure" />
-              <SubItem to="/admin/finance/invoices"      label="Invoices" />
-              <SubItem to="/admin/finance/payments"      label="Payments" />
-              <SubItem to="/admin/finance/mpesa"         label="MPESA Integration" />
-              <SubItem to="/admin/finance/reports"       label="Financial Reports" />
-            </NavGroup>
+                <NavHeading>Staff Management</NavHeading>
+                <NavGroup icon="bi-person-badge-fill" label="Teachers" onChildClick={childClick}>
+                  <SubItem to="/admin/teachers"             label="All Teachers"       />
+                  <SubItem to="/admin/teachers/new"         label="Add Teacher"        />
+                  <SubItem to="/admin/teachers/allocations" label="Subject Allocation" />
+                  <SubItem to="/admin/teachers/attendance"  label="Teacher Attendance" />
+                </NavGroup>
 
-            <NavHeading>Attendance Tracking</NavHeading>
-            <NavItem to="/admin/attendance" icon="bi-calendar-check-fill" label="Attendance Overview" />
+                <NavHeading>Financial Hub</NavHeading>
+                <NavGroup icon="bi-cash-stack" label="Finance" onChildClick={childClick}>
+                  <SubItem to="/admin/finance/dashboard"     label="Dashboard"         />
+                  <SubItem to="/admin/finance/fee-structure" label="Fee Structure"     />
+                  <SubItem to="/admin/finance/invoices"      label="Invoices"          />
+                  <SubItem to="/admin/finance/payments"      label="Payments"          />
+                  <SubItem to="/admin/finance/mpesa"         label="MPESA Integration" />
+                  <SubItem to="/admin/finance/reports"       label="Financial Reports" />
+                </NavGroup>
 
-            <NavHeading>System Configuration</NavHeading>
-            <NavGroup icon="bi-gear-fill" label="Settings">
-              <SubItem to="/admin/settings/school"   label="School Settings" />
-              <SubItem to="/admin/settings/grading"  label="Grading Scale" />
-              <SubItem to="/admin/settings/roles"    label="User Roles" />
-              <SubItem to="/admin/settings/backup"   label="Backup & Restore" />
-            </NavGroup>
-          </>
-        )}
+                <NavHeading>Attendance Tracking</NavHeading>
+                <NavItem to="/admin/attendance" icon="bi-calendar-check-fill" label="Attendance Overview" onClick={handleItemClick} />
 
-        {/* ════════════════════════════════════════════════════
-            FINANCE PORTAL
-            ════════════════════════════════════════════════════ */}
-        {isFinance && !isAdmin && (
-          <>
-            <NavHeading>Finance Dashboard</NavHeading>
-            <NavItem to="/finance/dashboard" icon="bi-speedometer2" label="Overview" />
+                <NavHeading>System Configuration</NavHeading>
+                <NavGroup icon="bi-gear-fill" label="Settings" onChildClick={childClick}>
+                  <SubItem to="/admin/settings/school"   label="School Settings" />
+                  <SubItem to="/admin/settings/grading"  label="Grading Scale"   />
+                  <SubItem to="/admin/settings/roles"    label="User Roles"      />
+                  <SubItem to="/admin/settings/backup"   label="Backup & Restore"/>
+                </NavGroup>
+              </>
+            )}
 
-            <NavHeading>Financial Operations</NavHeading>
-            <NavItem to="/finance/invoices"      icon="bi-receipt"    label="Invoices" />
-            <NavItem to="/finance/payments"      icon="bi-cash"       label="Payments" />
-            <NavItem to="/finance/mpesa"         icon="bi-phone"      label="MPESA" />
-            <NavItem to="/finance/fee-structure" icon="bi-list-ul"    label="Fee Structure" />
-            <NavItem to="/finance/reports"       icon="bi-graph-up"   label="Reports" />
-          </>
-        )}
+            {/* ══════════════════════════════════════════════
+                FINANCE PORTAL
+                ══════════════════════════════════════════════ */}
+            {isFinance && !isAdmin && (
+              <>
+                <NavHeading>Finance Dashboard</NavHeading>
+                <NavItem to="/finance/dashboard"    icon="bi-speedometer2" label="Overview"      onClick={handleItemClick} />
 
-        {/* ════════════════════════════════════════════════════
-            TEACHER PORTAL
-            ════════════════════════════════════════════════════ */}
-        {isTeacher && (
-          <>
-            <NavHeading>Teacher Workspace</NavHeading>
-            <NavItem to="/teacher/dashboard" icon="bi-speedometer2" label="Dashboard" />
+                <NavHeading>Financial Operations</NavHeading>
+                <NavItem to="/finance/invoices"     icon="bi-receipt"      label="Invoices"      onClick={handleItemClick} />
+                <NavItem to="/finance/payments"     icon="bi-cash"         label="Payments"      onClick={handleItemClick} />
+                <NavItem to="/finance/mpesa"        icon="bi-phone"        label="MPESA"         onClick={handleItemClick} />
+                <NavItem to="/finance/fee-structure"icon="bi-list-ul"      label="Fee Structure" onClick={handleItemClick} />
+                <NavItem to="/finance/reports"      icon="bi-graph-up"     label="Reports"       onClick={handleItemClick} />
+              </>
+            )}
 
-            <NavGroup icon="bi-pencil-square" label="Mark Management">
-              <SubItem to="/teacher/marks/subjects"  label="My Subjects" />
-              <SubItem to="/teacher/marks/entry"     label="Enter Marks" />
-              <SubItem to="/teacher/marks/upload"    label="Bulk Upload" />
-              <SubItem to="/teacher/marks/analysis"  label="Performance Analysis" />
-            </NavGroup>
+            {/* ══════════════════════════════════════════════
+                TEACHER PORTAL
+                ══════════════════════════════════════════════ */}
+            {isTeacher && (
+              <>
+                <NavHeading>Teacher Workspace</NavHeading>
+                <NavItem to="/teacher/dashboard" icon="bi-speedometer2"       label="Dashboard"   onClick={handleItemClick} />
 
-            <NavItem to="/teacher/attendance" icon="bi-calendar-check-fill" label="Attendance" />
-            <NavItem to="/teacher/reports"    icon="bi-bar-chart-line-fill" label="Class Reports" />
-            <NavItem to="/teacher/timetable"  icon="bi-calendar-week"       label="My Timetable" />
-          </>
-        )}
+                <NavGroup icon="bi-pencil-square" label="Mark Management" onChildClick={childClick}>
+                  <SubItem to="/teacher/marks/subjects" label="My Subjects"         />
+                  <SubItem to="/teacher/marks/entry"    label="Enter Marks"         />
+                  <SubItem to="/teacher/marks/upload"   label="Bulk Upload"         />
+                  <SubItem to="/teacher/marks/analysis" label="Performance Analysis"/>
+                </NavGroup>
 
-        {/* ════════════════════════════════════════════════════
-            STUDENT PORTAL
-            ════════════════════════════════════════════════════ */}
-        {isStudent && (
-          <>
-            <NavHeading>Student Hub</NavHeading>
-            <NavItem to="/student/dashboard" icon="bi-speedometer2" label="Dashboard" />
+                <NavItem to="/teacher/attendance" icon="bi-calendar-check-fill"  label="Attendance"   onClick={handleItemClick} />
+                <NavItem to="/teacher/reports"    icon="bi-bar-chart-line-fill"  label="Class Reports" onClick={handleItemClick} />
+                <NavItem to="/teacher/timetable"  icon="bi-calendar-week"        label="My Timetable"  onClick={handleItemClick} />
+              </>
+            )}
 
-            <NavGroup icon="bi-journal-check" label="Academic Results">
-              <SubItem to="/student/results"             label="My Results" />
-              <SubItem to="/student/results/report-card" label="Report Card" />
-              <SubItem to="/student/results/transcript"  label="Transcript" />
-            </NavGroup>
+            {/* ══════════════════════════════════════════════
+                STUDENT PORTAL
+                ══════════════════════════════════════════════ */}
+            {isStudent && (
+              <>
+                <NavHeading>Student Hub</NavHeading>
+                <NavItem to="/student/dashboard" icon="bi-speedometer2" label="Dashboard" onClick={handleItemClick} />
 
-            <NavGroup icon="bi-cash-coin" label="Fee Management">
-              <SubItem to="/student/fees/statement" label="Fee Statement" />
-              <SubItem to="/student/fees/pay"       label="Pay Fees" />
-              <SubItem to="/student/fees/payments"  label="Payment History" />
-            </NavGroup>
+                <NavGroup icon="bi-journal-check" label="Academic Results" onChildClick={childClick}>
+                  <SubItem to="/student/results"             label="My Results"   />
+                  <SubItem to="/student/results/report-card" label="Report Card"  />
+                  <SubItem to="/student/results/transcript"  label="Transcript"   />
+                </NavGroup>
 
-            <NavItem to="/student/attendance" icon="bi-calendar-event-fill" label="Attendance" />
-            <NavItem to="/student/timetable"  icon="bi-calendar-week"       label="Timetable" />
-            <NavItem to="/student/profile"    icon="bi-person-circle"       label="My Profile" />
-          </>
-        )}
+                <NavGroup icon="bi-cash-coin" label="Fee Management" onChildClick={childClick}>
+                  <SubItem to="/student/fees/statement" label="Fee Statement"    />
+                  <SubItem to="/student/fees/pay"       label="Pay Fees"         />
+                  <SubItem to="/student/fees/payments"  label="Payment History"  />
+                </NavGroup>
 
-      </ul>
-    </aside>
+                <NavItem to="/student/attendance" icon="bi-calendar-event-fill" label="Attendance" onClick={handleItemClick} />
+                <NavItem to="/student/timetable"  icon="bi-calendar-week"       label="Timetable"  onClick={handleItemClick} />
+                <NavItem to="/student/profile"    icon="bi-person-circle"       label="My Profile" onClick={handleItemClick} />
+              </>
+            )}
+
+          </ul>
+        </div>
+      </aside>
+    </>
   );
 }
