@@ -14,7 +14,7 @@ import {
   GradeBadge,
 } from "../../../components/common";
 
-// ── Helper: group ExamResult rows by exam ─────────────────────────────────────
+// ── Helper: group ExamResult rows by exam ────────────────────────────────────
 function groupResultsByExam(results = []) {
   const map = {};
   for (const r of results) {
@@ -32,11 +32,23 @@ function groupResultsByExam(results = []) {
     map[examId].total += parseFloat(r.marks || 0);
     map[examId].count += 1;
   }
-  // Compute mean per exam
   return Object.values(map).map((g) => ({
     ...g,
     mean: g.count > 0 ? (g.total / g.count).toFixed(1) : "—",
   }));
+}
+
+const GRADE_ORDER = {
+  A: 12, "A-": 11, "B+": 10, B: 9, "B-": 8,
+  "C+": 7, C: 6, "C-": 5, "D+": 4, D: 3, "D-": 2, E: 1,
+};
+
+function bestGrade(results) {
+  return results.reduce((best, r) => {
+    return (GRADE_ORDER[r.grade] || 0) > (GRADE_ORDER[best] || 0)
+      ? r.grade
+      : best;
+  }, "E");
 }
 
 // =============================================================================
@@ -46,290 +58,362 @@ export const MyResults = () => {
   const [studentId, setStudentId] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState(null);
-  const [selectedExam, setSelectedExam] = useState(null);
+  const [expandedExam, setExpandedExam] = useState(null);
 
-  // Step 1: get student profile to obtain the real student PK
   useEffect(() => {
     getMyStudentProfile()
-      .then((res) => {
-        setStudentId(res.data.id);
-      })
+      .then((res) => setStudentId(res.data.id))
       .catch(() => setProfileError("Could not load your student profile."))
       .finally(() => setProfileLoading(false));
   }, []);
 
-  // Step 2: fetch all results for this student (no exam filter = all results)
   const {
     data: results,
     loading: resultsLoading,
     error: resultsError,
   } = useFetch(
-    () => (studentId ? getStudentResults(studentId) : Promise.resolve({ data: [] })),
+    () =>
+      studentId
+        ? getStudentResults(studentId)
+        : Promise.resolve({ data: [] }),
     [studentId]
   );
 
   const examGroups = groupResultsByExam(results ?? []);
 
   if (profileLoading || resultsLoading) return <LoadingSpinner />;
-  if (profileError) return <AlertMessage type="danger" message={profileError} />;
-  if (resultsError) return <AlertMessage type="danger" message={resultsError} />;
+  if (profileError)
+    return <AlertMessage type="danger" message={profileError} />;
+  if (resultsError)
+    return <AlertMessage type="danger" message={resultsError} />;
 
   return (
     <>
       <style>{`
-        /* Results Card Styles */
-        .results-card {
-          transition: all var(--transition-base);
-          border: 1px solid var(--border);
-          border-radius: 20px;
-          overflow: hidden;
-          height: 100%;
+        /* ── Exam result cards grid ── */
+        .exam-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: var(--space-5);
+          animation: fadeInUp var(--duration-300) var(--ease-out);
         }
-        
-        .results-card:hover {
-          transform: translateY(-4px);
-          box-shadow: var(--shadow-lg);
-        }
-        
-        .results-card-header {
-          background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-          border-bottom: 1px solid var(--border);
-          padding: 20px 20px 16px;
-        }
-        
-        .results-card-title {
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin-bottom: 8px;
-        }
-        
-        .results-card-subtitle {
-          font-size: 12px;
-          color: var(--text-muted);
-        }
-        
-        .results-stats {
+
+        /* ── Per-exam card — uses .card base from main.css ── */
+        .exam-card {
           display: flex;
-          justify-content: space-between;
-          padding: 16px 20px;
-          background: #fafbfc;
-          border-bottom: 1px solid var(--border);
+          flex-direction: column;
+          margin-bottom: 0;          /* grid handles spacing */
+          transition: box-shadow var(--transition-base), transform var(--transition-base);
         }
-        
-        .results-stat {
-          text-align: center;
-          flex: 1;
+
+        .exam-card:hover {
+          box-shadow: var(--shadow-md);
+          transform: translateY(-2px);
         }
-        
-        .results-stat-label {
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: var(--text-muted);
-          margin-bottom: 6px;
+
+        /* card-header accent bar */
+        .exam-card__header {
+          padding: var(--space-5) var(--space-6);
+          border-bottom: 1px solid var(--color-border);
+          background: var(--color-surface-sunken);
+          position: relative;
         }
-        
-        .results-stat-value {
-          font-size: 22px;
+
+        .exam-card__header::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, var(--brand-500), var(--teal-500));
+          border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        }
+
+        .exam-card__title {
+          font-size: var(--text-md);
           font-weight: 700;
-          color: var(--text-primary);
+          color: var(--color-text);
+          letter-spacing: var(--tracking-snug);
+          margin: 0 0 var(--space-1);
         }
-        
-        .results-stat-value.small {
-          font-size: 18px;
+
+        .exam-card__sub {
+          font-size: var(--text-xs);
+          color: var(--color-text-muted);
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wider);
         }
-        
-        .results-table-wrapper {
-          padding: 0;
-          max-height: 300px;
+
+        /* ── KPI strip inside each exam card ── */
+        .exam-kpi-strip {
+          display: flex;
+          border-bottom: 1px solid var(--color-border);
+        }
+
+        .exam-kpi {
+          flex: 1;
+          text-align: center;
+          padding: var(--space-4) var(--space-3);
+          position: relative;
+        }
+
+        .exam-kpi + .exam-kpi::before {
+          content: '';
+          position: absolute;
+          left: 0; top: 20%; bottom: 20%;
+          width: 1px;
+          background: var(--color-border);
+        }
+
+        .exam-kpi__label {
+          font-size: var(--text-xs);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wider);
+          color: var(--color-text-muted);
+          margin-bottom: var(--space-1);
+          display: block;
+        }
+
+        .exam-kpi__val {
+          font-size: var(--text-2xl);
+          font-weight: 800;
+          color: var(--color-text);
+          font-family: var(--font-mono);
+          letter-spacing: var(--tracking-tight);
+          line-height: 1;
+        }
+
+        /* ── Expand toggle button ── */
+        .exam-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: var(--space-2);
+          width: 100%;
+          padding: var(--space-3) var(--space-4);
+          border: none;
+          border-top: 1px solid var(--color-border);
+          background: var(--color-surface-sunken);
+          font-size: var(--text-sm);
+          font-weight: 600;
+          font-family: var(--font-sans);
+          color: var(--brand-600);
+          cursor: pointer;
+          transition: background var(--transition-fast), color var(--transition-fast);
+          margin-top: auto;
+        }
+
+        .exam-toggle:hover {
+          background: var(--brand-50);
+        }
+
+        .exam-toggle i { font-size: 13px; }
+
+        /* ── Inline subject breakdown (data-table style) ── */
+        .subject-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: var(--text-sm);
+          font-family: var(--font-sans);
+          animation: fadeInUp var(--duration-200) var(--ease-out);
+        }
+
+        .subject-table thead th {
+          padding: 9px var(--space-4);
+          text-align: left;
+          font-size: var(--text-xs);
+          font-weight: 700;
+          color: var(--color-text-secondary);
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wider);
+          background: var(--slate-50);
+          border-top: 1px solid var(--color-border);
+          border-bottom: 1px solid var(--color-border);
+          white-space: nowrap;
+        }
+
+        .subject-table thead th:not(:first-child) { text-align: center; }
+
+        .subject-table tbody td {
+          padding: 10px var(--space-4);
+          border-bottom: 1px solid var(--color-border);
+          color: var(--color-text-secondary);
+          vertical-align: middle;
+        }
+
+        .subject-table tbody td:not(:first-child) { text-align: center; }
+
+        .subject-table tbody tr:last-child td { border-bottom: none; }
+        .subject-table tbody tr { transition: background var(--duration-75); }
+        .subject-table tbody tr:hover { background: var(--slate-50); }
+
+        .cell-subject-name {
+          font-weight: 600;
+          color: var(--color-text);
+        }
+
+        .cell-marks {
+          font-family: var(--font-mono);
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--brand-600);
+        }
+
+        /* ── Empty state — matches main.css .empty-state ── */
+        .results-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: var(--space-12) var(--space-8);
+        }
+
+        .results-empty__icon {
+          width: 64px;
+          height: 64px;
+          border-radius: var(--radius-lg);
+          background: var(--slate-100);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 28px;
+          color: var(--color-text-muted);
+          margin-bottom: var(--space-5);
+        }
+
+        .results-empty__title {
+          font-size: var(--text-xl);
+          font-weight: 700;
+          color: var(--color-text);
+          margin-bottom: var(--space-2);
+        }
+
+        .results-empty__desc {
+          font-size: var(--text-sm);
+          color: var(--color-text-muted);
+          max-width: 360px;
+          line-height: var(--leading-relaxed);
+        }
+
+        /* ── Scrollable subject list inside card ── */
+        .subject-scroll {
+          max-height: 320px;
           overflow-y: auto;
         }
-        
-        .results-table-wrapper table {
-          margin-bottom: 0;
+
+        /* ── Responsive ── */
+        @media (max-width: 640px) {
+          .exam-grid { grid-template-columns: 1fr; }
+          .exam-kpi__val { font-size: var(--text-xl); }
         }
-        
-        .results-table-wrapper thead th {
-          position: sticky;
-          top: 0;
-          background: white;
-          z-index: 1;
-        }
-        
-        /* Empty state */
-        .empty-results {
-          text-align: center;
-          padding: 60px 20px;
-          background: var(--bg-card);
-          border-radius: 20px;
-          border: 1px solid var(--border);
-        }
-        
-        .empty-results i {
-          font-size: 64px;
-          color: var(--text-muted);
-          opacity: 0.3;
-          margin-bottom: 16px;
-        }
-        
-        .empty-results p {
-          color: var(--text-muted);
-          margin: 0;
-        }
-        
-        /* Print styles */
+
         @media print {
-          .btn,
-          .back-to-top,
-          .header,
-          .sidebar,
-          .footer {
-            display: none !important;
-          }
-          
-          #main {
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          
-          .results-card {
-            break-inside: avoid;
-            box-shadow: none;
-            border: 1px solid #ddd;
-          }
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-          .results-card-title {
-            font-size: 16px;
-          }
-          
-          .results-stat-value {
-            font-size: 18px;
-          }
-          
-          .results-stat-value.small {
-            font-size: 16px;
-          }
-          
-          .results-table-wrapper {
-            max-height: 250px;
-          }
-        }
-        
-        @media (max-width: 576px) {
-          .results-card-header {
-            padding: 16px;
-          }
-          
-          .results-stats {
-            padding: 12px 16px;
-            flex-direction: column;
-            gap: 12px;
-          }
-          
-          .results-stat {
-            text-align: left;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-          
-          .results-stat-label {
-            margin-bottom: 0;
-          }
-          
-          .results-table-wrapper td,
-          .results-table-wrapper th {
-            padding: 8px 12px;
-            font-size: 12px;
-          }
+          .exam-card { break-inside: avoid; box-shadow: none; }
+          .exam-toggle { display: none; }
+          .subject-scroll { max-height: none; overflow: visible; }
         }
       `}</style>
 
       <PageTitle title="My Results" breadcrumbs={[{ label: "Results" }]} />
 
       {examGroups.length === 0 ? (
-        <div className="empty-results">
-          <i className="bi bi-journal-x" />
-          <p>No exam results available yet.</p>
-          <small className="text-muted">Results will appear here once published by your teachers.</small>
+        <div className="card">
+          <div className="card-body results-empty">
+            <div className="results-empty__icon">
+              <i className="bi bi-journal-x" />
+            </div>
+            <h4 className="results-empty__title">No Results Yet</h4>
+            <p className="results-empty__desc">
+              Results will appear here once they are published by your teachers.
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="row g-4">
+        <div className="exam-grid">
           {examGroups.map((group) => (
-            <div key={group.exam_id} className="col-md-6 col-lg-4">
-              <div className="results-card">
-                <div className="results-card-header">
-                  <h5 className="results-card-title">{group.exam_name}</h5>
-                  <div className="results-card-subtitle">
-                    {group.count} subject{group.count !== 1 ? "s" : ""}
-                  </div>
-                </div>
-                
-                <div className="results-stats">
-                  <div className="results-stat">
-                    <div className="results-stat-label">Mean Score</div>
-                    <div className="results-stat-value">{group.mean}</div>
-                  </div>
-                  <div className="results-stat">
-                    <div className="results-stat-label">Total Marks</div>
-                    <div className="results-stat-value small">{group.total.toFixed(0)}</div>
-                  </div>
-                  <div className="results-stat">
-                    <div className="results-stat-label">Best Grade</div>
-                    <div className="results-stat-value small">
-                      {group.results.reduce((best, r) => {
-                        const gradeOrder = { 'A': 12, 'A-': 11, 'B+': 10, 'B': 9, 'B-': 8, 'C+': 7, 'C': 6, 'C-': 5, 'D+': 4, 'D': 3, 'D-': 2, 'E': 1 };
-                        const currentBest = gradeOrder[best] || 0;
-                        const current = gradeOrder[r.grade] || 0;
-                        return current > currentBest ? r.grade : best;
-                      }, 'E')}
-                    </div>
-                  </div>
-                </div>
-                
-                <button
-                  className="btn btn-outline-primary w-100 rounded-0"
-                  style={{ borderLeft: 'none', borderRight: 'none', borderRadius: 0 }}
-                  onClick={() =>
-                    setSelectedExam(
-                      selectedExam?.exam_id === group.exam_id ? null : group
-                    )
-                  }
-                >
-                  <i className={`bi ${selectedExam?.exam_id === group.exam_id ? 'bi-chevron-up' : 'bi-chevron-down'} me-2`} />
-                  {selectedExam?.exam_id === group.exam_id ? "Hide Details" : "View Details"}
-                </button>
-
-                {/* Inline subject breakdown */}
-                {selectedExam?.exam_id === group.exam_id && (
-                  <div className="results-table-wrapper">
-                    <table className="table table-sm table-hover mb-0">
-                      <thead className="table-light">
-                        <tr>
-                          <th style={{ padding: '12px 16px' }}>Subject</th>
-                          <th style={{ padding: '12px 16px', width: '80px', textAlign: 'center' }}>Marks</th>
-                          <th style={{ padding: '12px 16px', width: '80px', textAlign: 'center' }}>Grade</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {group.results.map((r) => (
-                          <tr key={r.id}>
-                            <td style={{ padding: '10px 16px', fontWeight: 500 }}>{r.subject_name}</td>
-                            <td style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 600 }}>{r.marks}%</td>
-                            <td style={{ padding: '10px 16px', textAlign: 'center' }}>
-                              <GradeBadge grade={r.grade} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+            <div key={group.exam_id} className="card exam-card">
+              {/* Header */}
+              <div className="exam-card__header">
+                <h5 className="exam-card__title">{group.exam_name}</h5>
+                <span className="exam-card__sub">
+                  {group.count} subject{group.count !== 1 ? "s" : ""}
+                </span>
               </div>
+
+              {/* KPI strip */}
+              <div className="exam-kpi-strip">
+                <div className="exam-kpi">
+                  <span className="exam-kpi__label">Mean Score</span>
+                  <span className="exam-kpi__val">{group.mean}</span>
+                </div>
+                <div className="exam-kpi">
+                  <span className="exam-kpi__label">Total</span>
+                  <span className="exam-kpi__val">
+                    {group.total.toFixed(0)}
+                  </span>
+                </div>
+                <div className="exam-kpi">
+                  <span className="exam-kpi__label">Best Grade</span>
+                  <span className="exam-kpi__val">
+                    {bestGrade(group.results)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Subject breakdown (collapsible) */}
+              {expandedExam === group.exam_id && (
+                <div className="subject-scroll">
+                  <table className="subject-table">
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        <th>Marks</th>
+                        <th>Grade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.results.map((r) => (
+                        <tr key={r.id}>
+                          <td>
+                            <span className="cell-subject-name">
+                              {r.subject_name}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="cell-marks">{r.marks}%</span>
+                          </td>
+                          <td>
+                            <GradeBadge grade={r.grade} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Toggle */}
+              <button
+                className="exam-toggle"
+                onClick={() =>
+                  setExpandedExam(
+                    expandedExam === group.exam_id ? null : group.exam_id
+                  )
+                }
+              >
+                <i
+                  className={`bi ${
+                    expandedExam === group.exam_id
+                      ? "bi-chevron-up"
+                      : "bi-chevron-down"
+                  }`}
+                />
+                {expandedExam === group.exam_id
+                  ? "Hide Details"
+                  : "View Details"}
+              </button>
             </div>
           ))}
         </div>
@@ -350,7 +434,6 @@ export const ReportCard = () => {
   const [downloadError, setDownloadError] = useState("");
   const [downloadSuccess, setDownloadSuccess] = useState("");
 
-  // Step 1: get real student PK
   useEffect(() => {
     getMyStudentProfile()
       .then((res) => setStudentId(res.data.id))
@@ -358,7 +441,6 @@ export const ReportCard = () => {
       .finally(() => setProfileLoading(false));
   }, []);
 
-  // Step 2: fetch published exams so student can pick one
   const { data: exams, loading: examsLoading } = useFetch(
     () => getExams({ is_published: true }),
     []
@@ -399,218 +481,149 @@ export const ReportCard = () => {
     }
   };
 
-  const handlePrint = () => window.print();
-
   if (profileLoading) return <LoadingSpinner />;
-  if (profileError) return <AlertMessage type="danger" message={profileError} />;
+  if (profileError)
+    return <AlertMessage type="danger" message={profileError} />;
+
+  const selectedExam = exams?.find(
+    (e) => String(e.id) === String(selectedExamId)
+  );
 
   return (
     <>
       <style>{`
-        /* Report Card Styles */
-        .report-card-wrapper {
-          max-width: 800px;
+        /* ── Report card layout ── */
+        .rc-wrapper {
+          max-width: 720px;
           margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-5);
         }
-        
-        .report-card-preview {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 20px;
-          padding: 40px;
-          text-align: center;
-          margin-bottom: 24px;
+
+        /* ── Hero banner — mirrors .profile-hero__banner treatment ── */
+        .rc-hero {
+          background: linear-gradient(
+            135deg,
+            var(--brand-700) 0%,
+            var(--brand-500) 55%,
+            var(--teal-500) 100%
+          );
+          border-radius: var(--radius-lg);
+          padding: var(--space-8) var(--space-7);
+          display: flex;
+          align-items: center;
+          gap: var(--space-5);
           position: relative;
           overflow: hidden;
+          box-shadow: var(--shadow-brand);
         }
-        
-        .report-card-preview::before {
+
+        .rc-hero::before,
+        .rc-hero::after {
           content: '';
           position: absolute;
-          width: 200%;
-          height: 200%;
-          background: radial-gradient(circle, rgba(255,255,255,0.1) 1%, transparent 1%);
-          background-size: 50px 50px;
-          animation: shimmer 20s linear infinite;
-        }
-        
-        @keyframes shimmer {
-          0% { transform: translate(-50%, -50%) rotate(0deg); }
-          100% { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-        
-        .report-card-preview-icon {
-          width: 80px;
-          height: 80px;
-          background: rgba(255,255,255,0.2);
           border-radius: 50%;
+          pointer-events: none;
+          background: rgba(255,255,255,0.06);
+        }
+        .rc-hero::before { width: 260px; height: 260px; top: -120px; right: -60px; }
+        .rc-hero::after  { width: 100px; height: 100px; bottom: -40px; right: 160px; }
+
+        .rc-hero__icon {
+          width: 64px;
+          height: 64px;
+          border-radius: var(--radius-md);
+          background: rgba(255,255,255,0.18);
+          border: 2px solid rgba(255,255,255,0.28);
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto 20px;
+          font-size: 28px;
+          color: #fff;
+          flex-shrink: 0;
           position: relative;
           z-index: 1;
         }
-        
-        .report-card-preview-icon i {
-          font-size: 40px;
-          color: white;
+
+        .rc-hero__body { position: relative; z-index: 1; }
+
+        .rc-hero__title {
+          font-size: var(--text-2xl);
+          font-weight: 800;
+          color: #fff;
+          letter-spacing: var(--tracking-tight);
+          margin: 0 0 var(--space-1);
         }
-        
-        .report-card-preview-title {
-          font-size: 24px;
-          font-weight: 700;
-          color: white;
-          margin-bottom: 8px;
-          position: relative;
-          z-index: 1;
-        }
-        
-        .report-card-preview-subtitle {
-          font-size: 14px;
-          color: rgba(255,255,255,0.9);
-          position: relative;
-          z-index: 1;
-        }
-        
-        .report-card-form {
-          background: var(--bg-card);
-          border-radius: 20px;
-          border: 1px solid var(--border);
-          overflow: hidden;
-        }
-        
-        .report-card-form-header {
-          padding: 20px 24px;
-          border-bottom: 1px solid var(--border);
-          background: #fafbfc;
-        }
-        
-        .report-card-form-header h5 {
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin-bottom: 4px;
-        }
-        
-        .report-card-form-header p {
-          font-size: 13px;
-          color: var(--text-muted);
+
+        .rc-hero__sub {
+          font-size: var(--text-sm);
+          color: rgba(255,255,255,0.75);
           margin: 0;
         }
-        
-        .report-card-form-body {
-          padding: 24px;
+
+        /* ── Download card ── */
+        .rc-card { margin-bottom: 0; }
+
+        /* ── Exam info row — reuses .info-row from main.css ── */
+        .rc-exam-info {
+          margin-top: var(--space-4);
+          padding: var(--space-4) var(--space-5);
+          border-radius: var(--radius);
+          background: var(--brand-50);
+          border: 1px solid var(--brand-100);
+          display: flex;
+          align-items: center;
+          gap: var(--space-3);
+          animation: fadeInUp var(--duration-200) var(--ease-out);
         }
-        
-        .exam-info-card {
-          background: var(--primary-light);
-          border-radius: 12px;
-          padding: 16px;
-          margin-top: 16px;
+
+        .rc-exam-info i {
+          color: var(--brand-500);
+          font-size: 16px;
+          flex-shrink: 0;
         }
-        
-        .exam-info-card h6 {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--primary);
-          margin-bottom: 8px;
+
+        .rc-exam-info__name {
+          font-size: var(--text-sm);
+          font-weight: 700;
+          color: var(--brand-700);
         }
-        
-        .exam-info-card p {
-          font-size: 12px;
-          color: var(--text-secondary);
-          margin: 0;
+
+        .rc-exam-info__term {
+          font-size: var(--text-xs);
+          color: var(--color-text-muted);
+          margin-top: 1px;
         }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-          .report-card-preview {
-            padding: 30px 20px;
-          }
-          
-          .report-card-preview-icon {
-            width: 60px;
-            height: 60px;
-          }
-          
-          .report-card-preview-icon i {
-            font-size: 30px;
-          }
-          
-          .report-card-preview-title {
-            font-size: 20px;
-          }
-          
-          .report-card-preview-subtitle {
-            font-size: 12px;
-          }
-          
-          .report-card-form-header {
-            padding: 16px 20px;
-          }
-          
-          .report-card-form-body {
-            padding: 20px;
-          }
+
+        /* ── Action row ── */
+        .rc-actions {
+          display: flex;
+          gap: var(--space-3);
+          align-items: flex-end;
         }
-        
-        @media (max-width: 576px) {
-          .report-card-preview {
-            padding: 24px 16px;
-          }
-          
-          .report-card-preview-icon {
-            width: 50px;
-            height: 50px;
-            margin-bottom: 16px;
-          }
-          
-          .report-card-preview-icon i {
-            font-size: 24px;
-          }
-          
-          .report-card-preview-title {
-            font-size: 18px;
-          }
-          
-          .report-card-form-header {
-            padding: 14px 16px;
-          }
-          
-          .report-card-form-body {
-            padding: 16px;
-          }
-          
-          .report-card-form-body .d-flex {
-            flex-direction: column;
-          }
-          
-          .report-card-form-body .btn {
-            width: 100%;
-          }
+
+        .rc-actions .form-group { flex: 1; margin-bottom: 0; }
+
+        @media (max-width: 640px) {
+          .rc-hero { flex-direction: column; text-align: center; padding: var(--space-6); }
+          .rc-hero__icon { margin: 0 auto; }
+          .rc-actions { flex-direction: column; }
+          .rc-actions .btn { width: 100%; }
         }
-        
-        /* Print styles */
+
         @media print {
-          .report-card-preview,
-          .btn,
-          .back-to-top,
-          .header,
-          .sidebar,
-          .footer {
-            display: none !important;
-          }
-          
-          .report-card-form {
-            box-shadow: none;
-            border: 1px solid #ddd;
-          }
+          .rc-hero, .btn, .header, .sidebar, .footer { display: none !important; }
+          #main { margin: 0 !important; padding: 0 !important; }
         }
       `}</style>
 
       <PageTitle
         title="Report Card"
-        breadcrumbs={[{ label: "Results", to: "/student/results" }, { label: "Report Card" }]}
+        breadcrumbs={[
+          { label: "Results", to: "/student/results" },
+          { label: "Report Card" },
+        ]}
       />
 
       {downloadError && (
@@ -628,38 +641,54 @@ export const ReportCard = () => {
         />
       )}
 
-      <div className="report-card-wrapper">
-        {/* Preview Banner */}
-        <div className="report-card-preview">
-          <div className="report-card-preview-icon">
+      <div className="rc-wrapper">
+        {/* Hero */}
+        <div className="rc-hero">
+          <div className="rc-hero__icon">
             <i className="bi bi-file-earmark-pdf-fill" />
           </div>
-          <h2 className="report-card-preview-title">Official Report Card</h2>
-          <p className="report-card-preview-subtitle">
-            Download your official examination results
-          </p>
+          <div className="rc-hero__body">
+            <h2 className="rc-hero__title">Official Report Card</h2>
+            <p className="rc-hero__sub">
+              Download your official examination results as a PDF
+            </p>
+          </div>
         </div>
 
-        {/* Form Card */}
-        <div className="report-card-form">
-          <div className="report-card-form-header">
-            <h5>
-              <i className="bi bi-download me-2"></i>
-              Download Your Report Card
+        {/* Download card */}
+        <div className="card rc-card">
+          <div className="card-header">
+            <h5 className="card-title">
+              <i className="bi bi-download me-2" />
+              Download Report Card
             </h5>
-            <p>Select an exam below to download your official PDF report card</p>
           </div>
-          
-          <div className="report-card-form-body">
-            <div className="row g-3 align-items-end">
-              <div className="col-md-7">
-                <label className="form-label fw-600">
-                  <i className="bi bi-journal-bookmark-fill me-1"></i>
+
+          <div className="card-body">
+            <div className="rc-actions">
+              {/* Exam selector */}
+              <div className="form-group">
+                <label className="form-label">
                   Select Exam
+                  <span className="required">*</span>
                 </label>
                 {examsLoading ? (
-                  <div className="text-muted py-2">
-                    <span className="spinner-border spinner-border-sm me-2" />
+                  <div
+                    className="form-control"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "var(--space-2)",
+                      color: "var(--color-text-muted)",
+                    }}
+                  >
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      style={{
+                        borderColor: "var(--brand-200)",
+                        borderTopColor: "var(--brand-500)",
+                      }}
+                    />
                     Loading exams…
                   </div>
                 ) : (
@@ -678,53 +707,52 @@ export const ReportCard = () => {
                 )}
               </div>
 
-              <div className="col-md-5">
-                <div className="d-flex gap-2">
-                  <button
-                    className="btn btn-primary flex-grow-1"
-                    onClick={handleDownload}
-                    disabled={!selectedExamId || downloading || !studentId}
-                  >
-                    {downloading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" />
-                        Generating PDF…
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-file-earmark-pdf me-2" />
-                        Download PDF
-                      </>
-                    )}
-                  </button>
-                  <button
-                    className="btn btn-outline-secondary"
-                    onClick={handlePrint}
-                    disabled={!selectedExamId}
-                  >
-                    <i className="bi bi-printer" />
-                  </button>
-                </div>
-              </div>
+              {/* Download button */}
+              <button
+                className={`btn btn-primary${downloading ? " is-loading" : ""}`}
+                onClick={handleDownload}
+                disabled={!selectedExamId || downloading || !studentId}
+                style={{ flexShrink: 0 }}
+              >
+                {!downloading && <i className="bi bi-file-earmark-pdf me-2" />}
+                {downloading ? "Generating PDF…" : "Download PDF"}
+              </button>
+
+              {/* Print button */}
+              <button
+                className="btn btn-outline btn-icon"
+                onClick={() => window.print()}
+                disabled={!selectedExamId}
+                title="Print"
+                style={{ flexShrink: 0 }}
+              >
+                <i className="bi bi-printer" />
+              </button>
             </div>
 
-            {(exams ?? []).length === 0 && !examsLoading && (
-              <div className="alert alert-info mt-4 mb-0">
-                <i className="bi bi-info-circle me-2" />
-                No published exams found. Report cards are available once your teacher publishes the results.
+            {/* No exams notice */}
+            {!examsLoading && (exams ?? []).length === 0 && (
+              <div className="alert alert--info mt-4 mb-0">
+                <i className="bi bi-info-circle" />
+                <div className="alert__body">
+                  <p className="alert__text">
+                    No published exams found. Report cards become available once
+                    your teacher publishes results.
+                  </p>
+                </div>
               </div>
             )}
-            
-            {selectedExamId && !examsLoading && (
-              <div className="exam-info-card">
-                <h6>
-                  <i className="bi bi-info-circle-fill me-1"></i>
-                  Selected Exam Details
-                </h6>
-                <p>
-                  <strong>{exams?.find(e => String(e.id) === String(selectedExamId))?.name}</strong><br />
-                  {exams?.find(e => String(e.id) === String(selectedExamId))?.term_display}
-                </p>
+
+            {/* Selected exam info */}
+            {selectedExam && (
+              <div className="rc-exam-info">
+                <i className="bi bi-journal-bookmark-fill" />
+                <div>
+                  <div className="rc-exam-info__name">{selectedExam.name}</div>
+                  <div className="rc-exam-info__term">
+                    {selectedExam.term_display}
+                  </div>
+                </div>
               </div>
             )}
           </div>
